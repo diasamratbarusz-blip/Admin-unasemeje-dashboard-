@@ -145,25 +145,32 @@ button {
   <div id="contentArea">
       <div class="card" style="text-align: center; color: var(--text-dim);">
           <i class="fas fa-spinner fa-spin" style="font-size: 24px; margin-bottom: 10px;"></i>
-          <p>Connecting to Supreme Command...</p>
+          <p>Loading Supreme Command...</p>
       </div>
   </div>
 </div>
 
 <script>
 const API = "https://unasemeje-backend.vercel.app/api";
-let token = localStorage.getItem("token") || "";
 
+// NO TOKEN NEEDED - DIRECT ACCESS
 async function adminFetch(endpoint, method = "GET", body = null) {
   try {
     const opts = {
       method,
-      headers: { "Authorization": "Bearer " + token, "Content-Type": "application/json" }
+      headers: { "Content-Type": "application/json" }
     };
     if (body) opts.body = JSON.stringify(body);
     const res = await fetch(API + endpoint, opts);
     return await res.json();
-  } catch (err) { return { error: "Server Offline" }; }
+  } catch (err) { 
+      document.getElementById("contentArea").innerHTML = `
+        <div class="card" style="color: var(--danger); text-align: center;">
+            <h3><i class="fas fa-exclamation-triangle"></i> Server Offline</h3>
+            <p>Cannot connect to the backend API.</p>
+        </div>`;
+      return { error: "Server Offline" }; 
+  }
 }
 
 /* --- OVERVIEW & DELIX SYNC --- */
@@ -197,7 +204,8 @@ async function syncDelix() {
     btn.disabled = true;
     
     try {
-        const res = await fetch(`${API}/services?refresh=true`, { headers: { "Authorization": "Bearer " + token } });
+        // NO TOKEN HEADER
+        const res = await fetch(`${API}/services?refresh=true`);
         const data = await res.json();
         alert(data.success ? "Success! Store updated from Delix." : "Error: " + data.error);
     } catch(e) { alert("Sync failed. Check backend logs."); }
@@ -340,50 +348,9 @@ function search() {
     }
 }
 
-// --- SILENT BACKGROUND LOGIN ---
-async function silentLogin() {
-    // If we already have a token, just load the dashboard
-    if (token) {
-        loadStats();
-        return;
-    }
-
-    // Otherwise, secretly log in in the background
-    try {
-        const res = await fetch(API + "/login", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-                identifier: "diasamratbarusz@gmail.com", // Your admin email
-                password: "YOUR_ADMIN_PASSWORD_HERE"     // <--- PUT YOUR ACTUAL ADMIN PASSWORD HERE
-            })
-        });
-        const data = await res.json();
-        
-        if (data.token) {
-            token = data.token;
-            localStorage.setItem("token", token);
-            loadStats(); // Now load the dashboard with the new token
-        } else {
-            document.getElementById("contentArea").innerHTML = `
-                <div class="card" style="color: var(--danger); text-align: center;">
-                    <h3><i class="fas fa-exclamation-triangle"></i> Connection Failed</h3>
-                    <p>Could not auto-login. Please update your admin password in the <code>index.html</code> code.</p>
-                    <p style="font-size: 0.8rem; color: var(--text-dim);">Error: ${data.error || "Invalid credentials"}</p>
-                </div>`;
-        }
-    } catch (e) {
-        document.getElementById("contentArea").innerHTML = `
-            <div class="card" style="color: var(--danger); text-align: center;">
-                <h3><i class="fas fa-exclamation-triangle"></i> Server Offline</h3>
-                <p>Cannot connect to the backend API. Check CORS settings in server.js.</p>
-            </div>`;
-    }
-}
-
-// Load dashboard immediately on page load
+// LOAD IMMEDIATELY - NO LOGIN, NO PASSWORD, NO EMAIL
 window.onload = function() {
-    silentLogin();
+    loadStats();
 };
 </script>
 </body>
