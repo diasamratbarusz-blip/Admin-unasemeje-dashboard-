@@ -15,6 +15,7 @@
   --accent-purple: #8b5cf6;
   --danger: #ef4444;
   --success: #22c55e;
+  --warning: #fbbf24;
 }
 
 body {
@@ -111,6 +112,44 @@ button {
 .btn-balance { background: var(--primary); color: #082f49; }
 .btn-approve { background: var(--success); color: #052e16; }
 .btn-danger { background: var(--danger); color: white; }
+.btn-success { background: var(--success); color: #052e16; }
+
+/* --- MAINTENANCE STATUS INDICATOR --- */
+.maintenance-status {
+    padding: 20px;
+    border-radius: 12px;
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+.maintenance-status.online {
+    background: rgba(34, 197, 94, 0.1);
+    border: 2px solid var(--success);
+}
+.maintenance-status.offline {
+    background: rgba(239, 68, 68, 0.1);
+    border: 2px solid var(--danger);
+}
+.status-icon {
+    font-size: 32px;
+}
+.status-icon.online { color: var(--success); }
+.status-icon.offline { color: var(--danger); }
+.status-text h3 { margin: 0 0 5px 0; }
+.status-text p { margin: 0; font-size: 14px; color: var(--text-dim); }
+
+.maintenance-buttons {
+    display: flex;
+    gap: 15px;
+    margin-top: 20px;
+    flex-wrap: wrap;
+}
+.maintenance-buttons button {
+    padding: 12px 24px;
+    font-size: 14px;
+    font-weight: 700;
+}
 
 @media (max-width: 768px) {
     .sidebar { width: 70px; }
@@ -204,7 +243,6 @@ async function syncDelix() {
     btn.disabled = true;
     
     try {
-        // NO TOKEN HEADER
         const res = await fetch(`${API}/services?refresh=true`);
         const data = await res.json();
         alert(data.success ? "Success! Store updated from Delix." : "Error: " + data.error);
@@ -284,9 +322,20 @@ async function loadOrders() {
     document.getElementById("contentArea").innerHTML = html + `</table></div>`;
 }
 
-/* --- GLOBAL SITE CONTROL --- */
+/* --- GLOBAL SITE CONTROL (UPDATED WITH CLEAR ON/OFF BUTTONS) --- */
 async function loadSiteControl() {
     setActiveNav('nav-site', 'Global Site Control');
+    
+    // Fetch current maintenance status
+    let maintenanceStatus = false;
+    try {
+        const settings = await fetch(`${API}/settings`);
+        const settingsData = await settings.json();
+        maintenanceStatus = settingsData.maintenance === true;
+    } catch(e) {
+        console.log("Could not fetch maintenance status");
+    }
+    
     document.getElementById("contentArea").innerHTML = `
         <div class="card">
             <h3><i class="fas fa-broadcast-tower"></i> Global Announcements</h3>
@@ -294,11 +343,38 @@ async function loadSiteControl() {
             <textarea id="announcementText" class="search-bar" style="height: 100px; resize: vertical;" placeholder="Type your message to all users..."></textarea>
             <button class="btn-balance" style="margin-top: 10px; padding: 12px 20px;" onclick="sendAnnouncement()"><i class="fas fa-paper-plane"></i> Broadcast to All Users</button>
         </div>
+        
         <div class="card">
             <h3><i class="fas fa-tools"></i> System Maintenance</h3>
-            <p style="color: var(--text-dim)">Temporarily disable user access to the main website for critical updates.</p>
-            <button class="btn-danger" style="padding: 12px 20px;" onclick="toggleMaintenance()"><i class="fas fa-power-off"></i> Toggle Maintenance Mode</button>
+            
+            <!-- MAINTENANCE STATUS DISPLAY -->
+            <div class="maintenance-status ${maintenanceStatus ? 'offline' : 'online'}">
+                <div class="status-icon ${maintenanceStatus ? 'offline' : 'online'}">
+                    <i class="fas ${maintenanceStatus ? 'fa-exclamation-triangle' : 'fa-check-circle'}"></i>
+                </div>
+                <div class="status-text">
+                    <h3 style="color: ${maintenanceStatus ? 'var(--danger)' : 'var(--success)'}">
+                        ${maintenanceStatus ? 'MAINTENANCE MODE: ON' : 'MAINTENANCE MODE: OFF'}
+                    </h3>
+                    <p>${maintenanceStatus ? 'Website is currently BLOCKED for all users' : 'Website is ONLINE and accessible to all users'}</p>
+                </div>
+            </div>
+            
+            <!-- SEPARATE ON/OFF BUTTONS -->
+            <div class="maintenance-buttons">
+                <button class="btn-danger" onclick="turnMaintenanceOn()" ${maintenanceStatus ? 'disabled style="opacity: 0.5; cursor: not-allowed;"' : ''}>
+                    <i class="fas fa-power-off"></i> Turn ON Maintenance
+                </button>
+                <button class="btn-success" onclick="turnMaintenanceOff()" ${!maintenanceStatus ? 'disabled style="opacity: 0.5; cursor: not-allowed;"' : ''}>
+                    <i class="fas fa-play"></i> Turn OFF Maintenance
+                </button>
+            </div>
+            
+            <p style="color: var(--text-dim); font-size: 13px; margin-top: 15px;">
+                <i class="fas fa-info-circle"></i> When maintenance is ON, users will see a maintenance page instead of the website.
+            </p>
         </div>
+        
         <div class="card">
             <h3><i class="fas fa-database"></i> Database Management</h3>
             <p style="color: var(--text-dim)">Clear cached data or reset specific system modules.</p>
@@ -315,10 +391,28 @@ async function sendAnnouncement() {
     alert(res.success ? "Broadcast sent successfully!" : "Failed: " + (res.error || "Unknown error"));
 }
 
-async function toggleMaintenance() {
-    if(!confirm("Are you sure you want to toggle Maintenance Mode? This will affect all users.")) return;
-    const res = await adminFetch("/admin/maintenance", "POST");
-    alert(res.success ? "Maintenance mode toggled." : "Failed: " + (res.error || "Unknown error"));
+// NEW: Separate function to turn maintenance ON
+async function turnMaintenanceOn() {
+    if(!confirm("⚠️ WARNING: This will BLOCK all users from accessing the website. Are you sure?")) return;
+    const res = await adminFetch("/admin/maintenance", "POST", { action: "on" });
+    if(res.success) {
+        alert("✅ Maintenance mode turned ON. Users cannot access the website.");
+        loadSiteControl(); // Refresh the page to show updated status
+    } else {
+        alert("❌ Failed: " + (res.error || "Unknown error"));
+    }
+}
+
+// NEW: Separate function to turn maintenance OFF
+async function turnMaintenanceOff() {
+    if(!confirm("Turn OFF maintenance mode? This will allow users to access the website again.")) return;
+    const res = await adminFetch("/admin/maintenance", "POST", { action: "off" });
+    if(res.success) {
+        alert("✅ Maintenance mode turned OFF. Users can now access the website.");
+        loadSiteControl(); // Refresh the page to show updated status
+    } else {
+        alert("❌ Failed: " + (res.error || "Unknown error"));
+    }
 }
 
 async function clearCache() {
