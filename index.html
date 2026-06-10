@@ -168,9 +168,10 @@ button {
   <a onclick="loadDeposits()" id="nav-deposits"><i class="fas fa-money-bill-wave"></i> <span>Deposits</span></a>
   <a onclick="loadOrders()" id="nav-orders"><i class="fas fa-shopping-bag"></i> <span>Orders</span></a>
   
-  <!-- NEW: Support Tickets & Ticker Links -->
+  <!-- NEW: Support Tickets, Ticker & Chat Security Links -->
   <a onclick="loadTickets()" id="nav-tickets"><i class="fas fa-life-ring"></i> <span>Support Tickets</span></a>
   <a onclick="loadTicker()" id="nav-ticker"><i class="fas fa-bullhorn"></i> <span>Top Ticker</span></a>
+  <a onclick="loadChatLogs()" id="nav-chatlogs"><i class="fas fa-shield-alt"></i> <span>Chat Security</span></a>
   
   <a onclick="loadSiteControl()" id="nav-site"><i class="fas fa-globe"></i> <span>Site Control</span></a>
   <hr style="border: 0; border-top: 1px solid #1e293b; margin: 20px 0;">
@@ -328,7 +329,7 @@ async function loadOrders() {
 }
 
 /* =========================================
- * NEW: SUPPORT TICKETS MANAGEMENT
+ * SUPPORT TICKETS MANAGEMENT
  * ========================================= */
 async function loadTickets() {
     setActiveNav('nav-tickets', 'Support Tickets');
@@ -369,7 +370,7 @@ async function resolveTicket(id) {
 }
 
 /* =========================================
- * NEW: TOP TICKER MANAGEMENT
+ * TOP TICKER MANAGEMENT
  * ========================================= */
 let currentTickerItems = [];
 
@@ -483,6 +484,96 @@ async function updateTickerSpeed() {
         alert("Ticker speed updated successfully!");
     } else {
         alert("Failed to update speed.");
+    }
+}
+
+/* =========================================
+ * CHAT SECURITY & MODERATION LOGS
+ * ========================================= */
+async function loadChatLogs() {
+    setActiveNav('nav-chatlogs', 'Chat Security & Logs');
+    const data = await adminFetch("/admin/chat-logs");
+    
+    if (data.error) {
+        document.getElementById("contentArea").innerHTML = `<div class="card" style="color:var(--danger)">Failed to load logs.</div>`;
+        return;
+    }
+
+    const logs = data.logs || [];
+    const bannedIds = data.bannedUserIds || [];
+
+    let html = `
+        <div class="card" style="border-left: 5px solid var(--warning); margin-bottom: 20px;">
+            <h3><i class="fas fa-gavel"></i> Chat Moderation Dashboard</h3>
+            <p style="color: var(--text-dim); font-size: 14px;">Monitor all AI conversations in real-time. If a user violates terms, you can restrict their AI access for exactly 3 days.</p>
+        </div>
+        <div id="chatLogsContainer">
+    `;
+
+    if (logs.length === 0) {
+        html += `<div class="card" style="text-align:center; color:var(--text-dim)">No chat logs yet.</div>`;
+    } else {
+        logs.forEach(log => {
+            const isBanned = bannedIds.includes(log.userId);
+            const date = new Date(log.createdAt).toLocaleString();
+            
+            html += `
+                <div class="card" style="margin-bottom: 15px; border-left: 3px solid ${isBanned ? 'var(--danger)' : 'var(--primary)'};">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; flex-wrap: wrap; gap: 10px;">
+                        <div>
+                            <b style="color: white;">${log.username || 'Unknown'}</b> 
+                            <small style="color: var(--text-dim);">(${log.userEmail})</small>
+                            ${isBanned ? '<span style="background: var(--danger); color: white; padding: 2px 8px; border-radius: 10px; font-size: 11px; margin-left: 10px;">BANNED</span>' : ''}
+                        </div>
+                        <small style="color: var(--text-dim);">${date}</small>
+                    </div>
+                    
+                    <div style="background: #1e293b; padding: 10px; border-radius: 8px; margin-bottom: 8px;">
+                        <small style="color: var(--primary); font-weight: bold;">USER:</small>
+                        <p style="margin: 5px 0 0; color: white; word-break: break-word;">${log.userMessage}</p>
+                    </div>
+                    
+                    <div style="background: rgba(34, 197, 94, 0.1); padding: 10px; border-radius: 8px; margin-bottom: 15px;">
+                        <small style="color: var(--success); font-weight: bold;">AI REPLY:</small>
+                        <p style="margin: 5px 0 0; color: #d1d5db; word-break: break-word; white-space: pre-wrap;">${log.aiReply}</p>
+                    </div>
+
+                    <div style="display: flex; gap: 10px; justify-content: flex-end;">
+                        ${isBanned 
+                            ? `<button class="btn-success" onclick="unbanChat('${log.userId}')"><i class="fas fa-unlock"></i> Unban User</button>` 
+                            : `<button class="btn-danger" onclick="banChat('${log.userId}', '${log.userEmail}')"><i class="fas fa-gavel"></i> Ban for 3 Days</button>`
+                        }
+                    </div>
+                </div>
+            `;
+        });
+    }
+    
+    html += `</div>`;
+    document.getElementById("contentArea").innerHTML = html;
+}
+
+async function banChat(userId, email) {
+    const reason = prompt(`Ban ${email} from AI Chat for 3 days?\nEnter reason (optional):`);
+    if (reason === null) return; // User cancelled prompt
+    
+    const res = await adminFetch("/admin/ban-chat", "POST", { userId, reason: reason || "Terms violation" });
+    if (res.success) {
+        alert("✅ User banned from chat for 3 days.");
+        loadChatLogs(); // Refresh UI
+    } else {
+        alert("❌ Failed to ban user.");
+    }
+}
+
+async function unbanChat(userId) {
+    if(!confirm("Remove chat ban for this user immediately?")) return;
+    const res = await adminFetch("/admin/unban-chat", "POST", { userId });
+    if (res.success) {
+        alert("✅ User unbanned successfully.");
+        loadChatLogs(); // Refresh UI
+    } else {
+        alert("❌ Failed to unban.");
     }
 }
 
@@ -612,4 +703,4 @@ window.onload = function() {
 };
 </script>
 </body>
-</html>
+  </html>
