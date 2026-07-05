@@ -140,7 +140,14 @@ button:disabled { opacity: 0.5; cursor: not-allowed; }
     display: flex;
     align-items: center;
     gap: 10px;
+    animation: slideIn 0.3s ease;
 }
+
+@keyframes slideIn {
+    from { transform: translateY(-20px); opacity: 0; }
+    to { transform: translateY(0); opacity: 1; }
+}
+
 .alert-success { background: rgba(34, 197, 94, 0.1); border: 1px solid var(--success); color: #86efac; }
 .alert-error { background: rgba(239, 68, 68, 0.1); border: 1px solid var(--danger); color: #fca5a5; }
 .alert-info { background: rgba(56, 189, 248, 0.1); border: 1px solid var(--primary); color: #7dd3fc; }
@@ -271,6 +278,36 @@ input:checked + .slider:before { transform: translateX(22px); }
     font-style: italic;
 }
 
+.upload-status {
+    padding: 10px;
+    border-radius: 8px;
+    margin-top: 10px;
+    font-size: 13px;
+    display: none;
+}
+
+.upload-status.show {
+    display: block;
+}
+
+.upload-status.success {
+    background: rgba(34, 197, 94, 0.1);
+    border: 1px solid var(--success);
+    color: #86efac;
+}
+
+.upload-status.error {
+    background: rgba(239, 68, 68, 0.1);
+    border: 1px solid var(--danger);
+    color: #fca5a5;
+}
+
+.upload-status.info {
+    background: rgba(56, 189, 248, 0.1);
+    border: 1px solid var(--primary);
+    color: #7dd3fc;
+}
+
 @media (max-width: 768px) {
     .sidebar { width: 70px; }
     .sidebar span, .sidebar h2, .sidebar .site-name { display: none; }
@@ -349,12 +386,14 @@ async function adminFetch(endpoint, method = "GET", body = null) {
     
     if (!res.ok) {
         const errorText = await res.text();
+        console.error(`API Error ${res.status}:`, errorText);
         return { error: `HTTP ${res.status}: ${errorText}`, success: false };
     }
     
     const data = await res.json();
     return data;
   } catch (err) { 
+      console.error('Fetch error:', err);
       document.getElementById("contentArea").innerHTML = `
         <div class="card" style="color: var(--danger); text-align: center;">
             <h3><i class="fas fa-exclamation-triangle"></i> Server Offline</h3>
@@ -367,12 +406,12 @@ async function adminFetch(endpoint, method = "GET", body = null) {
 
 /* =========================================
  * 📁 AUDIO FILE UPLOAD HANDLER (BASE64)
- * Converts file to Base64 and sends to backend
  * ========================================= */
-async function uploadAudioFile(fileInputId, urlInputId, btnId, audioType) {
+async function uploadAudioFile(fileInputId, urlInputId, btnId, audioType, statusId) {
     const fileInput = document.getElementById(fileInputId);
     const urlInput = document.getElementById(urlInputId);
     const btn = document.getElementById(btnId);
+    const statusDiv = document.getElementById(statusId);
     
     if (!fileInput.files || !fileInput.files[0]) {
         showAlert('error', 'Please select an audio file first!');
@@ -380,6 +419,11 @@ async function uploadAudioFile(fileInputId, urlInputId, btnId, audioType) {
     }
     
     const file = fileInput.files[0];
+    
+    console.log(`\n[UPLOAD] Starting upload for ${audioType}`);
+    console.log(`[UPLOAD] File: ${file.name}`);
+    console.log(`[UPLOAD] Size: ${(file.size / 1024 / 1024).toFixed(2)} MB`);
+    console.log(`[UPLOAD] Type: ${file.type}`);
     
     // Check file size (max 10MB)
     if (file.size > 10 * 1024 * 1024) {
@@ -396,18 +440,32 @@ async function uploadAudioFile(fileInputId, urlInputId, btnId, audioType) {
     btn.innerHTML = '<span class="spinner"></span> Processing...';
     btn.disabled = true;
     
+    if (statusDiv) {
+        statusDiv.className = 'upload-status show info';
+        statusDiv.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Converting file to Base64...';
+    }
+    
     try {
         // Convert file to Base64 using FileReader
         const base64Data = await new Promise((resolve, reject) => {
             const reader = new FileReader();
-            reader.onload = () => resolve(reader.result);
+            reader.onload = () => {
+                console.log(`[UPLOAD] Base64 conversion complete`);
+                console.log(`[UPLOAD] Base64 length: ${reader.result.length} characters`);
+                resolve(reader.result);
+            };
             reader.onerror = reject;
             reader.readAsDataURL(file);
         });
         
+        if (statusDiv) {
+            statusDiv.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Uploading to server...';
+        }
+        
         btn.innerHTML = '<span class="spinner"></span> Uploading...';
         
         // Send to backend
+        console.log(`[UPLOAD] Sending to backend...`);
         const res = await fetch(API + '/admin/audio/upload', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -419,19 +477,38 @@ async function uploadAudioFile(fileInputId, urlInputId, btnId, audioType) {
             })
         });
         
+        console.log(`[UPLOAD] Response status: ${res.status}`);
         const data = await res.json();
+        console.log(`[UPLOAD] Response data:`, data);
         
         if (data.success) {
             urlInput.value = data.url;
+            
+            if (statusDiv) {
+                statusDiv.className = 'upload-status show success';
+                statusDiv.innerHTML = `<i class="fas fa-check-circle"></i> File "${file.name}" uploaded successfully! (${(file.size / 1024 / 1024).toFixed(2)} MB)`;
+            }
+            
             showAlert('success', `✅ File "${file.name}" uploaded successfully!`);
             fileInput.value = ''; // Clear file input
             
             // Reload the audio settings to show the uploaded file
-            loadAudioSettingsAdmin();
+            setTimeout(() => {
+                loadAudioSettingsAdmin();
+            }, 1000);
         } else {
+            if (statusDiv) {
+                statusDiv.className = 'upload-status show error';
+                statusDiv.innerHTML = `<i class="fas fa-exclamation-circle"></i> Upload failed: ${data.error || 'Unknown error'}`;
+            }
             showAlert('error', 'Upload failed: ' + (data.error || 'Unknown error'));
         }
     } catch (err) {
+        console.error('[UPLOAD] Error:', err);
+        if (statusDiv) {
+            statusDiv.className = 'upload-status show error';
+            statusDiv.innerHTML = `<i class="fas fa-exclamation-circle"></i> Upload error: ${err.message}`;
+        }
         showAlert('error', 'Upload error: ' + err.message);
     } finally {
         btn.innerHTML = '<i class="fas fa-upload"></i> Upload';
@@ -493,6 +570,9 @@ async function loadAudioSettingsAdmin() {
     const notificationSound = settings.notificationSound || { enabled: true, url: '' };
     const loginSound = settings.loginSound || { enabled: true, url: '' };
 
+    console.log('[AUDIO] Loaded settings:', settings);
+    console.log('[AUDIO] Background Music URL:', bgMusic.url ? `${bgMusic.url.substring(0, 50)}... (${bgMusic.url.length} chars)` : 'None');
+
     // Helper function to check if URL is a Base64 data URL
     const isBase64 = (url) => url && url.startsWith('data:audio/');
     
@@ -519,7 +599,7 @@ async function loadAudioSettingsAdmin() {
                             <i class="fas fa-file-audio"></i>
                         </div>
                         <div class="file-details">
-                            <h4>Uploaded Audio File</h4>
+                            <h4>✅ Uploaded Audio File</h4>
                             <small>Size: ${size} MB • Stored in Database</small>
                         </div>
                     </div>
@@ -546,7 +626,7 @@ async function loadAudioSettingsAdmin() {
                     <audio controls class="audio-player" src="${url}"></audio>
                 </div>
             `;
-        } else {
+        } else if (url.startsWith('/')) {
             return `
                 <div class="uploaded-file-card">
                     <div class="file-info">
@@ -561,6 +641,8 @@ async function loadAudioSettingsAdmin() {
                     <audio controls class="audio-player" src="${url}"></audio>
                 </div>
             `;
+        } else {
+            return `<div class="no-file"><i class="fas fa-file-audio"></i> No file uploaded yet</div>`;
         }
     };
 
@@ -582,10 +664,11 @@ async function loadAudioSettingsAdmin() {
                     <label style="display: block; margin-bottom: 8px; color: var(--text-dim); font-size: 14px;">📁 Upload Audio File (MP3, WAV, OGG - Max 10MB)</label>
                     <div style="display: flex; gap: 10px; flex-wrap: wrap; align-items: center;">
                         <input type="file" id="bgMusicFile" accept="audio/*" style="flex: 1; min-width: 150px; padding: 8px; background: #1e293b; border: 1px solid #334155; border-radius: 8px; color: white; font-size: 13px;">
-                        <button type="button" class="btn-success" onclick="uploadAudioFile('bgMusicFile', 'bgMusicUrl', 'bgMusicUploadBtn', 'bgMusic')" id="bgMusicUploadBtn" style="padding: 10px 15px; white-space: nowrap;">
+                        <button type="button" class="btn-success" onclick="uploadAudioFile('bgMusicFile', 'bgMusicUrl', 'bgMusicUploadBtn', 'bgMusic', 'bgMusicStatus')" id="bgMusicUploadBtn" style="padding: 10px 15px; white-space: nowrap;">
                             <i class="fas fa-upload"></i> Upload
                         </button>
                     </div>
+                    <div id="bgMusicStatus" class="upload-status"></div>
                     <label style="display: block; margin-top: 15px; margin-bottom: 8px; color: var(--text-dim); font-size: 14px;">Or Paste External URL</label>
                     <input type="text" id="bgMusicUrl" value="${isBase64(bgMusic.url) ? '' : (bgMusic.url || '')}" class="search-bar" style="margin-bottom: 0;" placeholder="https://... or /sounds/...">
                     
@@ -616,10 +699,11 @@ async function loadAudioSettingsAdmin() {
                     <label style="display: block; margin-bottom: 8px; color: var(--text-dim); font-size: 14px;">📁 Upload Voice File (MP3, WAV, OGG - Max 10MB)</label>
                     <div style="display: flex; gap: 10px; flex-wrap: wrap; align-items: center;">
                         <input type="file" id="welcomeVoiceFile" accept="audio/*" style="flex: 1; min-width: 150px; padding: 8px; background: #1e293b; border: 1px solid #334155; border-radius: 8px; color: white; font-size: 13px;">
-                        <button type="button" class="btn-success" onclick="uploadAudioFile('welcomeVoiceFile', 'welcomeVoiceUrl', 'welcomeVoiceUploadBtn', 'welcomeVoice')" id="welcomeVoiceUploadBtn" style="padding: 10px 15px; white-space: nowrap;">
+                        <button type="button" class="btn-success" onclick="uploadAudioFile('welcomeVoiceFile', 'welcomeVoiceUrl', 'welcomeVoiceUploadBtn', 'welcomeVoice', 'welcomeVoiceStatus')" id="welcomeVoiceUploadBtn" style="padding: 10px 15px; white-space: nowrap;">
                             <i class="fas fa-upload"></i> Upload
                         </button>
                     </div>
+                    <div id="welcomeVoiceStatus" class="upload-status"></div>
                     <label style="display: block; margin-top: 15px; margin-bottom: 8px; color: var(--text-dim); font-size: 14px;">Or Paste External URL</label>
                     <input type="text" id="welcomeVoiceUrl" value="${isBase64(welcomeVoice.url) ? '' : (welcomeVoice.url || '')}" class="search-bar" style="margin-bottom: 0;" placeholder="https://... or /sounds/...">
                     
@@ -642,10 +726,11 @@ async function loadAudioSettingsAdmin() {
                     <label style="display: block; margin-bottom: 8px; color: var(--text-dim); font-size: 14px;">📁 Upload Sound File (MP3, WAV, OGG - Max 10MB)</label>
                     <div style="display: flex; gap: 10px; flex-wrap: wrap; align-items: center;">
                         <input type="file" id="successSoundFile" accept="audio/*" style="flex: 1; min-width: 150px; padding: 8px; background: #1e293b; border: 1px solid #334155; border-radius: 8px; color: white; font-size: 13px;">
-                        <button type="button" class="btn-success" onclick="uploadAudioFile('successSoundFile', 'successSoundUrl', 'successSoundUploadBtn', 'successSound')" id="successSoundUploadBtn" style="padding: 10px 15px; white-space: nowrap;">
+                        <button type="button" class="btn-success" onclick="uploadAudioFile('successSoundFile', 'successSoundUrl', 'successSoundUploadBtn', 'successSound', 'successSoundStatus')" id="successSoundUploadBtn" style="padding: 10px 15px; white-space: nowrap;">
                             <i class="fas fa-upload"></i> Upload
                         </button>
                     </div>
+                    <div id="successSoundStatus" class="upload-status"></div>
                     <label style="display: block; margin-top: 15px; margin-bottom: 8px; color: var(--text-dim); font-size: 14px;">Or Paste External URL</label>
                     <input type="text" id="successSoundUrl" value="${isBase64(successSound.url) ? '' : (successSound.url || '')}" class="search-bar" style="margin-bottom: 0;" placeholder="https://... or /sounds/...">
                     
@@ -668,10 +753,11 @@ async function loadAudioSettingsAdmin() {
                     <label style="display: block; margin-bottom: 8px; color: var(--text-dim); font-size: 14px;">📁 Upload Sound File (MP3, WAV, OGG - Max 10MB)</label>
                     <div style="display: flex; gap: 10px; flex-wrap: wrap; align-items: center;">
                         <input type="file" id="notificationSoundFile" accept="audio/*" style="flex: 1; min-width: 150px; padding: 8px; background: #1e293b; border: 1px solid #334155; border-radius: 8px; color: white; font-size: 13px;">
-                        <button type="button" class="btn-success" onclick="uploadAudioFile('notificationSoundFile', 'notificationSoundUrl', 'notificationSoundUploadBtn', 'notificationSound')" id="notificationSoundUploadBtn" style="padding: 10px 15px; white-space: nowrap;">
+                        <button type="button" class="btn-success" onclick="uploadAudioFile('notificationSoundFile', 'notificationSoundUrl', 'notificationSoundUploadBtn', 'notificationSound', 'notificationSoundStatus')" id="notificationSoundUploadBtn" style="padding: 10px 15px; white-space: nowrap;">
                             <i class="fas fa-upload"></i> Upload
                         </button>
                     </div>
+                    <div id="notificationSoundStatus" class="upload-status"></div>
                     <label style="display: block; margin-top: 15px; margin-bottom: 8px; color: var(--text-dim); font-size: 14px;">Or Paste External URL</label>
                     <input type="text" id="notificationSoundUrl" value="${isBase64(notificationSound.url) ? '' : (notificationSound.url || '')}" class="search-bar" style="margin-bottom: 0;" placeholder="https://... or /sounds/...">
                     
@@ -694,10 +780,11 @@ async function loadAudioSettingsAdmin() {
                     <label style="display: block; margin-bottom: 8px; color: var(--text-dim); font-size: 14px;">📁 Upload Sound File (MP3, WAV, OGG - Max 10MB)</label>
                     <div style="display: flex; gap: 10px; flex-wrap: wrap; align-items: center;">
                         <input type="file" id="loginSoundFile" accept="audio/*" style="flex: 1; min-width: 150px; padding: 8px; background: #1e293b; border: 1px solid #334155; border-radius: 8px; color: white; font-size: 13px;">
-                        <button type="button" class="btn-success" onclick="uploadAudioFile('loginSoundFile', 'loginSoundUrl', 'loginSoundUploadBtn', 'loginSound')" id="loginSoundUploadBtn" style="padding: 10px 15px; white-space: nowrap;">
+                        <button type="button" class="btn-success" onclick="uploadAudioFile('loginSoundFile', 'loginSoundUrl', 'loginSoundUploadBtn', 'loginSound', 'loginSoundStatus')" id="loginSoundUploadBtn" style="padding: 10px 15px; white-space: nowrap;">
                             <i class="fas fa-upload"></i> Upload
                         </button>
                     </div>
+                    <div id="loginSoundStatus" class="upload-status"></div>
                     <label style="display: block; margin-top: 15px; margin-bottom: 8px; color: var(--text-dim); font-size: 14px;">Or Paste External URL</label>
                     <input type="text" id="loginSoundUrl" value="${isBase64(loginSound.url) ? '' : (loginSound.url || '')}" class="search-bar" style="margin-bottom: 0;" placeholder="https://... or /sounds/...">
                     
@@ -729,6 +816,8 @@ async function saveAudioSettingsAdmin(event) {
         loginSoundEnabled: document.getElementById('loginSoundEnabled').checked,
         loginSoundUrl: document.getElementById('loginSoundUrl').value
     };
+    
+    console.log('[SAVE] Saving audio settings:', settings);
     
     const btn = event.target.querySelector('button[type="submit"]');
     btn.innerHTML = '<span class="spinner"></span> Saving...';
