@@ -308,6 +308,45 @@ input:checked + .slider:before { transform: translateX(22px); }
     color: #7dd3fc;
 }
 
+/* --- SOCIAL PREVIEW SPECIAL CARDS --- */
+.social-card-preview {
+    background: #1e293b;
+    border-radius: 12px;
+    overflow: hidden;
+    margin-top: 15px;
+    border: 1px solid #334155;
+    max-width: 500px;
+}
+.social-card-img {
+    width: 100%;
+    height: 250px;
+    background-size: cover;
+    background-position: center;
+    background-color: #0f172a;
+    border-bottom: 1px solid #334155;
+}
+.social-card-details {
+    padding: 15px;
+}
+.social-card-domain {
+    font-size: 11px;
+    text-transform: uppercase;
+    color: var(--text-dim);
+    letter-spacing: 0.5px;
+    margin-bottom: 5px;
+}
+.social-card-title {
+    font-size: 15px;
+    font-weight: bold;
+    color: white;
+    margin-bottom: 5px;
+}
+.social-card-desc {
+    font-size: 13px;
+    color: var(--text-dim);
+    margin: 0;
+}
+
 @media (max-width: 768px) {
     .sidebar { width: 70px; }
     .sidebar span, .sidebar h2, .sidebar .site-name { display: none; }
@@ -331,6 +370,7 @@ input:checked + .slider:before { transform: translateX(22px); }
   <a onclick="loadChatLogs()" id="nav-chatlogs"><i class="fas fa-shield-alt"></i> <span>Chat Security</span></a>
   
   <a onclick="loadAudioSettingsAdmin()" id="nav-audio"><i class="fas fa-music"></i> <span>Audio Settings</span></a>
+  <a onclick="loadSeoSettingsAdmin()" id="nav-seo"><i class="fas fa-share-alt"></i> <span>SEO & Socials</span></a>
 
   <a onclick="loadSiteControl()" id="nav-site"><i class="fas fa-globe"></i> <span>Site Control</span></a>
   <hr style="border: 0; border-top: 1px solid #1e293b; margin: 20px 0;">
@@ -832,6 +872,214 @@ async function saveAudioSettingsAdmin(event) {
         showAlert('success', 'Audio settings saved successfully!');
     } else {
         showAlert('error', 'Failed to save: ' + res.error);
+    }
+}
+
+/* =========================================
+ * ⚙️ SEO & SOCIAL SHARE SETTINGS PAGE
+ * ========================================= */
+async function loadSeoSettingsAdmin() {
+    setActiveNav('nav-seo', 'SEO & Social Share Settings');
+
+    document.getElementById("contentArea").innerHTML = `
+        <div class="card" style="text-align: center; color: var(--text-dim);">
+            <i class="fas fa-spinner fa-spin" style="font-size: 24px; margin-bottom: 10px;"></i>
+            <p>Loading SEO Settings...</p>
+        </div>
+    `;
+
+    // Fetch stored SEO configuration details from back-end settings
+    const data = await adminFetch("/admin/seo/settings");
+
+    if (data.error) {
+        document.getElementById("contentArea").innerHTML = `<div class="card" style="color:var(--danger)">Failed to load SEO settings: ${data.error}</div>`;
+        return;
+    }
+
+    const settings = data.data || {};
+    const siteTitle = settings.title || "Unasemeje SMM Gains - Kenya's #1 SMM Panel";
+    const siteDesc = settings.description || "Grow TikTok, Instagram, Facebook, YouTube & Telegram instantly.";
+    const siteUrl = settings.url || "https://unasemeje.co.ke";
+    const siteImg = settings.image || "https://unasemeje.co.ke/uploads/social-preview.jpg";
+
+    document.getElementById("contentArea").innerHTML = `
+        <form id="seoSettingsForm" onsubmit="saveSeoSettingsAdmin(event)">
+            
+            <div class="card">
+                <h3><i class="fas fa-share-alt" style="color: var(--primary);"></i> Social Preview Customization</h3>
+                <p style="color: var(--text-dim); font-size: 14px;">
+                    Set up exactly how your website link presents itself when posted across platforms like Facebook, WhatsApp, Telegram, X, Discord, and LinkedIn.
+                </p>
+
+                <!-- Facebook Preview Image Upload -->
+                <div style="margin-top: 20px;">
+                    <label style="display: block; margin-bottom: 8px; color: var(--text-dim); font-size: 14px;">📷 Upload Facebook/Social Preview Image (1200x630px Recommended - Max 8MB)</label>
+                    <div style="display: flex; gap: 10px; flex-wrap: wrap; align-items: center;">
+                        <input type="file" id="seoImageFile" accept="image/*" style="flex: 1; min-width: 150px; padding: 8px; background: #1e293b; border: 1px solid #334155; border-radius: 8px; color: white; font-size: 13px;">
+                        <button type="button" class="btn-success" onclick="uploadSeoImage()" id="seoUploadBtn" style="padding: 10px 15px; white-space: nowrap;">
+                            <i class="fas fa-upload"></i> Upload Image
+                        </button>
+                    </div>
+                    <div id="seoUploadStatus" class="upload-status"></div>
+
+                    <label style="display: block; margin-top: 15px; margin-bottom: 8px; color: var(--text-dim); font-size: 14px;">Image Destination Link (Absolute URL Required)</label>
+                    <input type="text" id="seoImageUrl" value="${siteImg}" class="search-bar" style="margin-bottom: 10px;" oninput="updateLiveSocialPreview()" placeholder="https://unasemeje.co.ke/uploads/social-preview.jpg">
+                </div>
+
+                <!-- Fields for Meta Info -->
+                <div style="margin-top: 15px;">
+                    <label style="display: block; margin-bottom: 8px; color: var(--text-dim); font-size: 14px;">📝 Website Title</label>
+                    <input type="text" id="seoTitle" value="${siteTitle}" class="search-bar" style="margin-bottom: 15px;" oninput="updateLiveSocialPreview()" placeholder="Unasemeje SMM Gains - Kenya's #1 SMM Panel">
+                    
+                    <label style="display: block; margin-bottom: 8px; color: var(--text-dim); font-size: 14px;">📝 Website Description</label>
+                    <textarea id="seoDescription" class="search-bar" style="height: 80px; resize: vertical; margin-bottom: 15px;" oninput="updateLiveSocialPreview()" placeholder="Grow TikTok, Instagram, Facebook, YouTube & Telegram instantly.">${siteDesc}</textarea>
+                    
+                    <label style="display: block; margin-bottom: 8px; color: var(--text-dim); font-size: 14px;">🔗 Website URL</label>
+                    <input type="text" id="seoUrl" value="${siteUrl}" class="search-bar" style="margin-bottom: 10px;" oninput="updateLiveSocialPreview()" placeholder="https://unasemeje.co.ke">
+                </div>
+            </div>
+
+            <!-- Live Card View Engine -->
+            <div class="card">
+                <h3><i class="fas fa-eye" style="color: var(--success);"></i> Live Social Feed Preview Card</h3>
+                <p style="color: var(--text-dim); font-size: 14px;">This is how your link looks to users when shared online.</p>
+                <div class="social-card-preview">
+                    <div class="social-card-img" id="previewSocialImg" style="background-image: url('${siteImg}');"></div>
+                    <div class="social-card-details">
+                        <div class="social-card-domain" id="previewSocialDomain">UNASEMEJE.CO.KE</div>
+                        <div class="social-card-title" id="previewSocialTitle">${siteTitle}</div>
+                        <div class="social-card-desc" id="previewSocialDesc">${siteDesc}</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Save Changes Button -->
+            <button type="submit" class="btn-balance" style="width: 100%; padding: 15px; font-size: 16px; margin-top: 10px;">
+                <i class="fas fa-save"></i> Save SEO / Social Share Settings
+            </button>
+        </form>
+    `;
+    updateLiveSocialPreview();
+}
+
+/* Base64 Image Upload to backend handler for SEO */
+async function uploadSeoImage() {
+    const fileInput = document.getElementById('seoImageFile');
+    const urlInput = document.getElementById('seoImageUrl');
+    const btn = document.getElementById('seoUploadBtn');
+    const statusDiv = document.getElementById('seoUploadStatus');
+
+    if (!fileInput.files || !fileInput.files[0]) {
+        showAlert('error', 'Please select a preview image file first!');
+        return;
+    }
+
+    const file = fileInput.files[0];
+
+    // Limit to 8MB 
+    if (file.size > 8 * 1024 * 1024) {
+        showAlert('error', 'Image too large! Maximum limit is 8MB.');
+        return;
+    }
+
+    if (!file.type.startsWith('image/')) {
+        showAlert('error', 'Please upload a valid image file (PNG, JPG, WEBP).');
+        return;
+    }
+
+    btn.innerHTML = '<span class="spinner"></span> Converting...';
+    btn.disabled = true;
+
+    statusDiv.className = 'upload-status show info';
+    statusDiv.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Preparing image payload...';
+
+    try {
+        const base64Data = await new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(reader.result);
+            reader.onerror = reject;
+            reader.readAsDataURL(file);
+        });
+
+        statusDiv.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Uploading to backend directory...';
+        btn.innerHTML = '<span class="spinner"></span> Uploading...';
+
+        const res = await fetch(API + '/admin/seo/upload', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                imageData: base64Data,
+                fileName: file.name
+            })
+        });
+
+        const data = await res.json();
+
+        if (data.success) {
+            urlInput.value = data.url;
+            statusDiv.className = 'upload-status show success';
+            statusDiv.innerHTML = `<i class="fas fa-check-circle"></i> Image uploaded successfully!`;
+            showAlert('success', '✅ Preview image uploaded!');
+            fileInput.value = ''; // Clean input
+            updateLiveSocialPreview();
+        } else {
+            statusDiv.className = 'upload-status show error';
+            statusDiv.innerHTML = `<i class="fas fa-exclamation-circle"></i> Upload failed: ${data.error || 'Unknown error'}`;
+            showAlert('error', 'Upload failed: ' + (data.error || 'Unknown error'));
+        }
+    } catch (err) {
+        statusDiv.className = 'upload-status show error';
+        statusDiv.innerHTML = `<i class="fas fa-exclamation-circle"></i> Connection error: ${err.message}`;
+        showAlert('error', 'Connection error: ' + err.message);
+    } finally {
+        btn.innerHTML = '<i class="fas fa-upload"></i> Upload Image';
+        btn.disabled = false;
+    }
+}
+
+/* Triggers dynamic visual updates in the admin panel on writing */
+function updateLiveSocialPreview() {
+    const titleVal = document.getElementById('seoTitle').value || "Unasemeje SMM Gains - Kenya's #1 SMM Panel";
+    const descVal = document.getElementById('seoDescription').value || "Grow TikTok, Instagram, Facebook, YouTube & Telegram instantly.";
+    const urlVal = document.getElementById('seoUrl').value || "https://unasemeje.co.ke";
+    const imgVal = document.getElementById('seoImageUrl').value || "https://unasemeje.co.ke/uploads/social-preview.jpg";
+
+    document.getElementById('previewSocialTitle').innerText = titleVal;
+    document.getElementById('previewSocialDesc').innerText = descVal;
+    document.getElementById('previewSocialImg').style.backgroundImage = `url('${imgVal}')`;
+
+    try {
+        const domain = new URL(urlVal).hostname.toUpperCase();
+        document.getElementById('previewSocialDomain').innerText = domain;
+    } catch(e) {
+        document.getElementById('previewSocialDomain').innerText = "UNASEMEJE.CO.KE";
+    }
+}
+
+/* Save final structured changes to server */
+async function saveSeoSettingsAdmin(event) {
+    event.preventDefault();
+
+    const settings = {
+        title: document.getElementById('seoTitle').value,
+        description: document.getElementById('seoDescription').value,
+        url: document.getElementById('seoUrl').value,
+        image: document.getElementById('seoImageUrl').value
+    };
+
+    const btn = event.target.querySelector('button[type="submit"]');
+    btn.innerHTML = '<span class="spinner"></span> Saving...';
+    btn.disabled = true;
+
+    const res = await adminFetch("/admin/seo/settings", "POST", settings);
+
+    btn.innerHTML = '<i class="fas fa-save"></i> Save SEO / Social Share Settings';
+    btn.disabled = false;
+
+    if (res.success) {
+        showAlert('success', 'SEO and Social Share settings updated successfully!');
+    } else {
+        showAlert('error', 'Failed saving changes: ' + res.error);
     }
 }
 
@@ -1408,4 +1656,4 @@ window.onload = function() {
 };
 </script>
 </body>
-  </html>
+</html>
