@@ -716,27 +716,23 @@ async function loadAudioSettingsAdmin() {
                 </div>
                 <div style="margin-top: 20px;">
                     <label style="display: block; margin-bottom: 8px; color: var(--text-dim); font-size: 14px;">Volume: <span id="bgVolumeDisplay">${Math.round((bgMusic.volume || 0.3) * 100)}</span>%</label>
-                    <input type="range" id="bgMusicVolume" min="0" max="100" value="${Math.round((bgMusic.volume || 0.3) * 100)}" 
-                           oninput="document.getElementById('bgVolumeDisplay').textContent = this.value"
-                           style="width: 100%; accent-color: var(--primary);">
+                    <input type="range" id="bgMusicVolume" min="0" max="1" step="0.05" value="${bgMusic.volume || 0.3}" style="width: 100%; height: 6px; background: #1e293b; border-radius: 5px; outline: none;" oninput="document.getElementById('bgVolumeDisplay').innerText = Math.round(this.value * 100)">
                 </div>
             </div>
 
             <!-- Welcome Voice Broadcast -->
-            <div class="card" style="border-left: 4px solid var(--accent-purple);">
-                <h3><i class="fas fa-broadcast-tower" style="color: var(--accent-purple);"></i> Login Welcome Broadcast (Radio Style)</h3>
-                <p style="color: var(--text-dim); font-size: 14px;">
-                    Plays a voice message when the user logs in. Background music will play quietly during the speech, then fade in.
-                </p>
+            <div class="card">
+                <h3><i class="fas fa-bullhorn" style="color: var(--accent-purple);"></i> Welcome Voice Broadcast</h3>
+                <p style="color: var(--text-dim); font-size: 14px;">Voice message played automatically when users enter the site.</p>
                 <div style="display: flex; align-items: center; gap: 15px; margin-top: 15px; flex-wrap: wrap;">
                     <label class="toggle-switch">
                         <input type="checkbox" id="welcomeVoiceEnabled" ${parseBool(welcomeVoice.enabled) ? 'checked' : ''}>
                         <span class="slider"></span>
                     </label>
-                    <span>Enable Welcome Voice</span>
+                    <span>Enable Welcome Voice Broadcast</span>
                 </div>
                 <div style="margin-top: 20px;">
-                    <label style="display: block; margin-bottom: 8px; color: var(--text-dim); font-size: 14px;">📁 Upload Voice File (MP3, WAV, OGG - Max 10MB)</label>
+                    <label style="display: block; margin-bottom: 8px; color: var(--text-dim); font-size: 14px;">📁 Upload Audio File (MP3, WAV, OGG - Max 10MB)</label>
                     <div style="display: flex; gap: 10px; flex-wrap: wrap; align-items: center;">
                         <input type="file" id="welcomeVoiceFile" accept="audio/*" style="flex: 1; min-width: 150px; padding: 8px; background: #1e293b; border: 1px solid #334155; border-radius: 8px; color: white; font-size: 13px;">
                         <button type="button" class="btn-success" onclick="uploadAudioFile('welcomeVoiceFile', 'welcomeVoiceUrl', 'welcomeVoiceUploadBtn', 'welcomeVoice', 'welcomeVoiceStatus')" id="welcomeVoiceUploadBtn" style="padding: 10px 15px; white-space: nowrap;">
@@ -751,10 +747,10 @@ async function loadAudioSettingsAdmin() {
                 </div>
             </div>
 
-            <!-- Success Sound -->
+            <!-- Success Sound Effect -->
             <div class="card">
-                <h3><i class="fas fa-check-circle" style="color: var(--success);"></i> Success Sound</h3>
-                <p style="color: var(--text-dim); font-size: 14px;">Played when a payment or deposit is successfully completed.</p>
+                <h3><i class="fas fa-check-circle" style="color: var(--success);"></i> Order Success Sound Effect</h3>
+                <p style="color: var(--text-dim); font-size: 14px;">Chime or effect triggered when an order or deposit completes.</p>
                 <div style="display: flex; align-items: center; gap: 15px; margin-top: 15px; flex-wrap: wrap;">
                     <label class="toggle-switch">
                         <input type="checkbox" id="successSoundEnabled" ${parseBool(successSound.enabled) ? 'checked' : ''}>
@@ -763,7 +759,7 @@ async function loadAudioSettingsAdmin() {
                     <span>Enable Success Sound</span>
                 </div>
                 <div style="margin-top: 20px;">
-                    <label style="display: block; margin-bottom: 8px; color: var(--text-dim); font-size: 14px;">📁 Upload Sound File (MP3, WAV, OGG - Max 10MB)</label>
+                    <label style="display: block; margin-bottom: 8px; color: var(--text-dim); font-size: 14px;">📁 Upload Audio File (MP3, WAV, OGG - Max 10MB)</label>
                     <div style="display: flex; gap: 10px; flex-wrap: wrap; align-items: center;">
                         <input type="file" id="successSoundFile" accept="audio/*" style="flex: 1; min-width: 150px; padding: 8px; background: #1e293b; border: 1px solid #334155; border-radius: 8px; color: white; font-size: 13px;">
                         <button type="button" class="btn-success" onclick="uploadAudioFile('successSoundFile', 'successSoundUrl', 'successSoundUploadBtn', 'successSound', 'successSoundStatus')" id="successSoundUploadBtn" style="padding: 10px 15px; white-space: nowrap;">
@@ -778,37 +774,10 @@ async function loadAudioSettingsAdmin() {
                 </div>
             </div>
 
-            <!-- Notification Sound -->
+            <!-- Login Sound Effect -->
             <div class="card">
-                <h3><i class="fas fa-bell" style="color: var(--warning);"></i> Notification Sound</h3>
-                <p style="color: var(--text-dim); font-size: 14px;">Played when a toast notification or alert appears on screen.</p>
-                <div style="display: flex; align-items: center; gap: 15px; margin-top: 15px; flex-wrap: wrap;">
-                    <label class="toggle-switch">
-                        <input type="checkbox" id="notificationSoundEnabled" ${parseBool(notificationSound.enabled) ? 'checked' : ''}>
-                        <span class="slider"></span>
-                    </label>
-                    <span>Enable Notification Sound</span>
-                </div>
-                <div style="margin-top: 20px;">
-                    <label style="display: block; margin-bottom: 8px; color: var(--text-dim); font-size: 14px;">📁 Upload Sound File (MP3, WAV, OGG - Max 10MB)</label>
-                    <div style="display: flex; gap: 10px; flex-wrap: wrap; align-items: center;">
-                        <input type="file" id="notificationSoundFile" accept="audio/*" style="flex: 1; min-width: 150px; padding: 8px; background: #1e293b; border: 1px solid #334155; border-radius: 8px; color: white; font-size: 13px;">
-                        <button type="button" class="btn-success" onclick="uploadAudioFile('notificationSoundFile', 'notificationSoundUrl', 'notificationSoundUploadBtn', 'notificationSound', 'notificationSoundStatus')" id="notificationSoundUploadBtn" style="padding: 10px 15px; white-space: nowrap;">
-                            <i class="fas fa-upload"></i> Upload
-                        </button>
-                    </div>
-                    <div id="notificationSoundStatus" class="upload-status"></div>
-                    <label style="display: block; margin-top: 15px; margin-bottom: 8px; color: var(--text-dim); font-size: 14px;">Or Paste External URL</label>
-                    <input type="text" id="notificationSoundUrl" value="${isBase64(notificationSound.url) ? '' : (notificationSound.url || '')}" class="search-bar" style="margin-bottom: 0;" placeholder="https://... or /sounds/...">
-                    
-                    ${generateFileDisplay(notificationSound.url, 'notificationSound', 'notificationSoundUrl')}
-                </div>
-            </div>
-
-            <!-- Login Sound -->
-            <div class="card">
-                <h3><i class="fas fa-sign-in-alt" style="color: var(--primary);"></i> Login Sound</h3>
-                <p style="color: var(--text-dim); font-size: 14px;">Played immediately when a user logs into their account.</p>
+                <h3><i class="fas fa-sign-in-alt" style="color: var(--warning);"></i> Login / Authentication Sound</h3>
+                <p style="color: var(--text-dim); font-size: 14px;">Audio cue triggered when a user successfully logs into the platform.</p>
                 <div style="display: flex; align-items: center; gap: 15px; margin-top: 15px; flex-wrap: wrap;">
                     <label class="toggle-switch">
                         <input type="checkbox" id="loginSoundEnabled" ${parseBool(loginSound.enabled) ? 'checked' : ''}>
@@ -817,7 +786,7 @@ async function loadAudioSettingsAdmin() {
                     <span>Enable Login Sound</span>
                 </div>
                 <div style="margin-top: 20px;">
-                    <label style="display: block; margin-bottom: 8px; color: var(--text-dim); font-size: 14px;">📁 Upload Sound File (MP3, WAV, OGG - Max 10MB)</label>
+                    <label style="display: block; margin-bottom: 8px; color: var(--text-dim); font-size: 14px;">📁 Upload Audio File (MP3, WAV, OGG - Max 10MB)</label>
                     <div style="display: flex; gap: 10px; flex-wrap: wrap; align-items: center;">
                         <input type="file" id="loginSoundFile" accept="audio/*" style="flex: 1; min-width: 150px; padding: 8px; background: #1e293b; border: 1px solid #334155; border-radius: 8px; color: white; font-size: 13px;">
                         <button type="button" class="btn-success" onclick="uploadAudioFile('loginSoundFile', 'loginSoundUrl', 'loginSoundUploadBtn', 'loginSound', 'loginSoundStatus')" id="loginSoundUploadBtn" style="padding: 10px 15px; white-space: nowrap;">
@@ -832,9 +801,9 @@ async function loadAudioSettingsAdmin() {
                 </div>
             </div>
 
-            <!-- Save Button -->
-            <button type="submit" class="btn-balance" style="width: 100%; padding: 15px; font-size: 16px; margin-top: 10px;">
-                <i class="fas fa-save"></i> Save All Audio Settings
+            <!-- Submit Button -->
+            <button type="submit" id="saveAudioBtn" class="btn-purple" style="padding: 15px 30px; font-size: 16px; font-weight: bold; width: 100%; border-radius: 12px; margin-bottom: 40px;">
+                <i class="fas fa-save"></i> Save Audio Configuration
             </button>
         </form>
     `;
@@ -842,818 +811,522 @@ async function loadAudioSettingsAdmin() {
 
 async function saveAudioSettingsAdmin(event) {
     event.preventDefault();
-    
-    const settings = {
-        bgMusicEnabled: document.getElementById('bgMusicEnabled').checked,
-        bgMusicUrl: document.getElementById('bgMusicUrl').value,
-        bgMusicVolume: document.getElementById('bgMusicVolume').value / 100,
-        welcomeVoiceEnabled: document.getElementById('welcomeVoiceEnabled').checked,
-        welcomeVoiceUrl: document.getElementById('welcomeVoiceUrl').value,
-        successSoundEnabled: document.getElementById('successSoundEnabled').checked,
-        successSoundUrl: document.getElementById('successSoundUrl').value,
-        notificationSoundEnabled: document.getElementById('notificationSoundEnabled').checked,
-        notificationSoundUrl: document.getElementById('notificationSoundUrl').value,
-        loginSoundEnabled: document.getElementById('loginSoundEnabled').checked,
-        loginSoundUrl: document.getElementById('loginSoundUrl').value
-    };
-    
-    console.log('[SAVE] Saving audio settings:', settings);
-    
-    const btn = event.target.querySelector('button[type="submit"]');
-    btn.innerHTML = '<span class="spinner"></span> Saving...';
-    btn.disabled = true;
+    const saveBtn = document.getElementById("saveAudioBtn");
+    saveBtn.innerHTML = '<span class="spinner"></span> Saving Settings...';
+    saveBtn.disabled = true;
 
-    const res = await adminFetch("/admin/audio/settings", "POST", settings);
+    const payload = {
+        bgMusicEnabled: document.getElementById("bgMusicEnabled").checked,
+        bgMusicUrl: document.getElementById("bgMusicUrl").value.trim(),
+        bgMusicVolume: parseFloat(document.getElementById("bgMusicVolume").value),
+        
+        welcomeVoiceEnabled: document.getElementById("welcomeVoiceEnabled").checked,
+        welcomeVoiceUrl: document.getElementById("welcomeVoiceUrl").value.trim(),
+        
+        successSoundEnabled: document.getElementById("successSoundEnabled").checked,
+        successSoundUrl: document.getElementById("successSoundUrl").value.trim(),
+        
+        loginSoundEnabled: document.getElementById("loginSoundEnabled").checked,
+        loginSoundUrl: document.getElementById("loginSoundUrl").value.trim()
+    };
+
+    const res = await adminFetch("/admin/audio/settings", "POST", payload);
     
-    btn.innerHTML = '<i class="fas fa-save"></i> Save All Audio Settings';
-    btn.disabled = false;
+    saveBtn.innerHTML = '<i class="fas fa-save"></i> Save Audio Configuration';
+    saveBtn.disabled = false;
 
     if (res.success) {
-        showAlert('success', 'Audio settings saved successfully!');
+        showAlert("success", "✅ Audio and Sound settings updated successfully!");
     } else {
-        showAlert('error', 'Failed to save: ' + res.error);
+        showAlert("error", "Failed to update audio settings: " + (res.error || "Unknown error"));
     }
 }
 
 /* =========================================
- * ⚙️ SEO & SOCIAL SHARE SETTINGS PAGE
+ * ⚙️ SEO & SOCIAL MEDIA CARDS MANAGEMENT
  * ========================================= */
 async function loadSeoSettingsAdmin() {
-    setActiveNav('nav-seo', 'SEO & Social Share Settings');
-
+    setActiveNav('nav-seo', 'SEO & Social Share Preview Settings');
+    
     document.getElementById("contentArea").innerHTML = `
         <div class="card" style="text-align: center; color: var(--text-dim);">
             <i class="fas fa-spinner fa-spin" style="font-size: 24px; margin-bottom: 10px;"></i>
-            <p>Loading SEO Settings...</p>
+            <p>Loading SEO & Social Share Settings...</p>
         </div>
     `;
 
-    // Fetch stored SEO configuration details from back-end settings
-    const data = await adminFetch("/admin/seo/settings");
-
-    if (data.error) {
-        document.getElementById("contentArea").innerHTML = `<div class="card" style="color:var(--danger)">Failed to load SEO settings: ${data.error}</div>`;
-        return;
-    }
-
-    const settings = data.data || {};
-    const siteTitle = settings.title || "Unasemeje SMM Gains - Kenya's #1 SMM Panel";
-    const siteDesc = settings.description || "Grow TikTok, Instagram, Facebook, YouTube & Telegram instantly.";
-    const siteUrl = settings.url || "https://unasemeje.co.ke";
-    const siteImg = settings.image || "https://unasemeje.co.ke/uploads/social-preview.jpg";
+    const settings = await adminFetch("/settings");
+    
+    const title = settings.seo_title || "UNASEMEJE SMM GAINS | Best Social Media Growth Panel in Kenya";
+    const desc = settings.seo_description || "Instant delivery for TikTok, Instagram, YouTube, and Facebook growth services in Kenya. Boost your presence now.";
+    const imgUrl = settings.seo_image || "https://unasemeje.co.ke/og-banner.jpg";
 
     document.getElementById("contentArea").innerHTML = `
         <form id="seoSettingsForm" onsubmit="saveSeoSettingsAdmin(event)">
-            
             <div class="card">
-                <h3><i class="fas fa-share-alt" style="color: var(--primary);"></i> Social Preview Customization</h3>
-                <p style="color: var(--text-dim); font-size: 14px;">
-                    Set up exactly how your website link presents itself when posted across platforms like Facebook, WhatsApp, Telegram, X, Discord, and LinkedIn.
-                </p>
-
-                <!-- Facebook Preview Image Upload -->
+                <h3><i class="fas fa-share-alt" style="color: var(--primary);"></i> Social Media Share Card (Open Graph)</h3>
+                <p style="color: var(--text-dim); font-size: 14px;">Controls how your link looks when shared on WhatsApp, Facebook, Telegram, and Twitter.</p>
+                
                 <div style="margin-top: 20px;">
-                    <label style="display: block; margin-bottom: 8px; color: var(--text-dim); font-size: 14px;">📷 Upload Facebook/Social Preview Image (1200x630px Recommended - Max 8MB)</label>
-                    <div style="display: flex; gap: 10px; flex-wrap: wrap; align-items: center;">
-                        <input type="file" id="seoImageFile" accept="image/*" style="flex: 1; min-width: 150px; padding: 8px; background: #1e293b; border: 1px solid #334155; border-radius: 8px; color: white; font-size: 13px;">
-                        <button type="button" class="btn-success" onclick="uploadSeoImage()" id="seoUploadBtn" style="padding: 10px 15px; white-space: nowrap;">
-                            <i class="fas fa-upload"></i> Upload Image
-                        </button>
-                    </div>
-                    <div id="seoUploadStatus" class="upload-status"></div>
-
-                    <label style="display: block; margin-top: 15px; margin-bottom: 8px; color: var(--text-dim); font-size: 14px;">Image Destination Link (Absolute URL Required)</label>
-                    <input type="text" id="seoImageUrl" value="${siteImg}" class="search-bar" style="margin-bottom: 10px;" oninput="updateLiveSocialPreview()" placeholder="https://unasemeje.co.ke/uploads/social-preview.jpg">
+                    <label style="display: block; margin-bottom: 8px; color: var(--text-dim); font-size: 14px;">Meta Title / Social Title</label>
+                    <input type="text" id="seoTitle" value="${title}" class="search-bar" oninput="updateSocialPreview()" placeholder="UNASEMEJE SMM GAINS">
                 </div>
 
-                <!-- Fields for Meta Info -->
                 <div style="margin-top: 15px;">
-                    <label style="display: block; margin-bottom: 8px; color: var(--text-dim); font-size: 14px;">📝 Website Title</label>
-                    <input type="text" id="seoTitle" value="${siteTitle}" class="search-bar" style="margin-bottom: 15px;" oninput="updateLiveSocialPreview()" placeholder="Unasemeje SMM Gains - Kenya's #1 SMM Panel">
-                    
-                    <label style="display: block; margin-bottom: 8px; color: var(--text-dim); font-size: 14px;">📝 Website Description</label>
-                    <textarea id="seoDescription" class="search-bar" style="height: 80px; resize: vertical; margin-bottom: 15px;" oninput="updateLiveSocialPreview()" placeholder="Grow TikTok, Instagram, Facebook, YouTube & Telegram instantly.">${siteDesc}</textarea>
-                    
-                    <label style="display: block; margin-bottom: 8px; color: var(--text-dim); font-size: 14px;">🔗 Website URL</label>
-                    <input type="text" id="seoUrl" value="${siteUrl}" class="search-bar" style="margin-bottom: 10px;" oninput="updateLiveSocialPreview()" placeholder="https://unasemeje.co.ke">
+                    <label style="display: block; margin-bottom: 8px; color: var(--text-dim); font-size: 14px;">Meta Description</label>
+                    <textarea id="seoDesc" class="search-bar" style="height: 80px; resize: vertical;" oninput="updateSocialPreview()" placeholder="Short pitch snippet...">${desc}</textarea>
+                </div>
+
+                <div style="margin-top: 15px;">
+                    <label style="display: block; margin-bottom: 8px; color: var(--text-dim); font-size: 14px;">Banner Image URL (1200x630px recommended)</label>
+                    <input type="text" id="seoImg" value="${imgUrl}" class="search-bar" oninput="updateSocialPreview()" placeholder="https://domain.com/og-image.jpg">
                 </div>
             </div>
 
-            <!-- Live Card View Engine -->
             <div class="card">
-                <h3><i class="fas fa-eye" style="color: var(--success);"></i> Live Social Feed Preview Card</h3>
-                <p style="color: var(--text-dim); font-size: 14px;">This is how your link looks to users when shared online.</p>
+                <h3><i class="fas fa-eye" style="color: var(--accent-purple);"></i> Live Share Card Preview</h3>
+                <p style="color: var(--text-dim); font-size: 14px;">This is how your platform links will appear when posted on WhatsApp & Social Media:</p>
+                
                 <div class="social-card-preview">
-                    <div class="social-card-img" id="previewSocialImg" style="background-image: url('${siteImg}');"></div>
+                    <div id="previewImg" class="social-card-img" style="background-image: url('${imgUrl}');"></div>
                     <div class="social-card-details">
-                        <div class="social-card-domain" id="previewSocialDomain">UNASEMEJE.CO.KE</div>
-                        <div class="social-card-title" id="previewSocialTitle">${siteTitle}</div>
-                        <div class="social-card-desc" id="previewSocialDesc">${siteDesc}</div>
+                        <div class="social-card-domain">UNASEMEJE.CO.KE</div>
+                        <div id="previewTitle" class="social-card-title">${title}</div>
+                        <div id="previewDesc" class="social-card-desc">${desc}</div>
                     </div>
                 </div>
             </div>
 
-            <!-- Save Changes Button -->
-            <button type="submit" class="btn-balance" style="width: 100%; padding: 15px; font-size: 16px; margin-top: 10px;">
-                <i class="fas fa-save"></i> Save SEO / Social Share Settings
+            <button type="submit" id="saveSeoBtn" class="btn-purple" style="padding: 15px 30px; font-size: 16px; font-weight: bold; width: 100%; border-radius: 12px; margin-bottom: 40px;">
+                <i class="fas fa-save"></i> Save SEO & Social Preview Configuration
             </button>
         </form>
     `;
-    updateLiveSocialPreview();
 }
 
-/* Base64 Image Upload to backend handler for SEO */
-async function uploadSeoImage() {
-    const fileInput = document.getElementById('seoImageFile');
-    const urlInput = document.getElementById('seoImageUrl');
-    const btn = document.getElementById('seoUploadBtn');
-    const statusDiv = document.getElementById('seoUploadStatus');
+function updateSocialPreview() {
+    const t = document.getElementById("seoTitle").value || "UNASEMEJE SMM GAINS";
+    const d = document.getElementById("seoDesc").value || "Social Media Panel";
+    const i = document.getElementById("seoImg").value || "";
 
-    if (!fileInput.files || !fileInput.files[0]) {
-        showAlert('error', 'Please select a preview image file first!');
-        return;
-    }
-
-    const file = fileInput.files[0];
-
-    // Limit to 8MB 
-    if (file.size > 8 * 1024 * 1024) {
-        showAlert('error', 'Image too large! Maximum limit is 8MB.');
-        return;
-    }
-
-    if (!file.type.startsWith('image/')) {
-        showAlert('error', 'Please upload a valid image file (PNG, JPG, WEBP).');
-        return;
-    }
-
-    btn.innerHTML = '<span class="spinner"></span> Converting...';
-    btn.disabled = true;
-
-    statusDiv.className = 'upload-status show info';
-    statusDiv.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Preparing image payload...';
-
-    try {
-        const base64Data = await new Promise((resolve, reject) => {
-            const reader = new FileReader();
-            reader.onload = () => resolve(reader.result);
-            reader.onerror = reject;
-            reader.readAsDataURL(file);
-        });
-
-        statusDiv.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Uploading to backend directory...';
-        btn.innerHTML = '<span class="spinner"></span> Uploading...';
-
-        const res = await fetch(API + '/admin/seo/upload', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                imageData: base64Data,
-                fileName: file.name
-            })
-        });
-
-        const data = await res.json();
-
-        if (data.success) {
-            urlInput.value = data.url;
-            statusDiv.className = 'upload-status show success';
-            statusDiv.innerHTML = `<i class="fas fa-check-circle"></i> Image uploaded successfully!`;
-            showAlert('success', '✅ Preview image uploaded!');
-            fileInput.value = ''; // Clean input
-            updateLiveSocialPreview();
-        } else {
-            statusDiv.className = 'upload-status show error';
-            statusDiv.innerHTML = `<i class="fas fa-exclamation-circle"></i> Upload failed: ${data.error || 'Unknown error'}`;
-            showAlert('error', 'Upload failed: ' + (data.error || 'Unknown error'));
-        }
-    } catch (err) {
-        statusDiv.className = 'upload-status show error';
-        statusDiv.innerHTML = `<i class="fas fa-exclamation-circle"></i> Connection error: ${err.message}`;
-        showAlert('error', 'Connection error: ' + err.message);
-    } finally {
-        btn.innerHTML = '<i class="fas fa-upload"></i> Upload Image';
-        btn.disabled = false;
-    }
+    document.getElementById("previewTitle").innerText = t;
+    document.getElementById("previewDesc").innerText = d;
+    document.getElementById("previewImg").style.backgroundImage = `url('${i}')`;
 }
 
-/* Triggers dynamic visual updates in the admin panel on writing */
-function updateLiveSocialPreview() {
-    const titleVal = document.getElementById('seoTitle').value || "Unasemeje SMM Gains - Kenya's #1 SMM Panel";
-    const descVal = document.getElementById('seoDescription').value || "Grow TikTok, Instagram, Facebook, YouTube & Telegram instantly.";
-    const urlVal = document.getElementById('seoUrl').value || "https://unasemeje.co.ke";
-    const imgVal = document.getElementById('seoImageUrl').value || "https://unasemeje.co.ke/uploads/social-preview.jpg";
-
-    document.getElementById('previewSocialTitle').innerText = titleVal;
-    document.getElementById('previewSocialDesc').innerText = descVal;
-    document.getElementById('previewSocialImg').style.backgroundImage = `url('${imgVal}')`;
-
-    try {
-        const domain = new URL(urlVal).hostname.toUpperCase();
-        document.getElementById('previewSocialDomain').innerText = domain;
-    } catch(e) {
-        document.getElementById('previewSocialDomain').innerText = "UNASEMEJE.CO.KE";
-    }
-}
-
-/* Save final structured changes to server */
 async function saveSeoSettingsAdmin(event) {
     event.preventDefault();
+    const saveBtn = document.getElementById("saveSeoBtn");
+    saveBtn.innerHTML = '<span class="spinner"></span> Saving...';
+    saveBtn.disabled = true;
 
-    const settings = {
-        title: document.getElementById('seoTitle').value,
-        description: document.getElementById('seoDescription').value,
-        url: document.getElementById('seoUrl').value,
-        image: document.getElementById('seoImageUrl').value
-    };
+    const title = document.getElementById("seoTitle").value.trim();
+    const desc = document.getElementById("seoDesc").value.trim();
+    const img = document.getElementById("seoImg").value.trim();
 
-    const btn = event.target.querySelector('button[type="submit"]');
-    btn.innerHTML = '<span class="spinner"></span> Saving...';
-    btn.disabled = true;
+    await adminFetch("/admin/announce", "POST", { key: "seo_title", value: title });
+    await adminFetch("/admin/announce", "POST", { key: "seo_description", value: desc });
+    await adminFetch("/admin/announce", "POST", { key: "seo_image", value: img });
 
-    const res = await adminFetch("/admin/seo/settings", "POST", settings);
+    saveBtn.innerHTML = '<i class="fas fa-save"></i> Save SEO & Social Preview Configuration';
+    saveBtn.disabled = false;
 
-    btn.innerHTML = '<i class="fas fa-save"></i> Save SEO / Social Share Settings';
-    btn.disabled = false;
-
-    if (res.success) {
-        showAlert('success', 'SEO and Social Share settings updated successfully!');
-    } else {
-        showAlert('error', 'Failed saving changes: ' + res.error);
-    }
+    showAlert("success", "✅ SEO and Social Preview card settings saved successfully!");
 }
 
-/* --- OVERVIEW & DELIX SYNC --- */
+/* =========================================
+ * 📊 GENERAL DASHBOARD STATS
+ * ========================================= */
 async function loadStats() {
     setActiveNav('nav-stats', 'Insights & Maintenance');
     const users = await adminFetch("/admin/users");
     const deposits = await adminFetch("/admin/deposits");
-    
-    if(!users.error) {
+
+    if (Array.isArray(users)) {
         document.getElementById("stat-users").innerText = users.length;
-        const total = users.reduce((s, u) => s + (u.balance || 0), 0);
-        document.getElementById("stat-money").innerText = "KES " + total.toLocaleString();
+        const totalFloat = users.reduce((acc, u) => acc + (u.balance || 0), 0);
+        document.getElementById("stat-money").innerText = `KES ${totalFloat.toLocaleString('en-KE', {minimumFractionDigits: 2})}`;
     }
-    
-    const pending = !deposits.error ? deposits.filter(d => d.status === "pending").length : 0;
-    document.getElementById("stat-deposits").innerText = pending;
+
+    if (Array.isArray(deposits)) {
+        const pending = deposits.filter(d => d.status === 'pending').length;
+        document.getElementById("stat-deposits").innerText = pending;
+    }
 
     document.getElementById("contentArea").innerHTML = `
         <div class="card">
-            <h3><i class="fas fa-cloud-download-alt"></i> Delix Provider Sync</h3>
-            <p style="color: var(--text-dim)">Fetch the latest services and pricing directly from the Delixgains API.</p>
-            <button class="btn-balance" id="syncBtn" style="padding: 15px 25px;" onclick="syncDelix()"><i class="fas fa-sync"></i> Refresh Delix Services Now</button>
+            <h3><i class="fas fa-bolt" style="color:var(--primary)"></i> System Quick Actions</h3>
+            <div style="display:flex; gap:15px; margin-top:15px; flex-wrap:wrap;">
+                <button class="btn-balance" onclick="adminFetch('/admin/clear-cache', 'POST').then(()=>showAlert('success', 'Cache Cleared!'))">Clear Cache</button>
+                <button class="btn-danger" onclick="adminFetch('/admin/reset-failed', 'POST').then(()=>showAlert('success', 'Failed Transactions Reset!'))">Reset Failed Orders</button>
+            </div>
         </div>
     `;
 }
 
-async function syncDelix() {
-    if(!confirm("Fetch new services from Delix? This updates your whole store.")) return;
-    const btn = document.getElementById("syncBtn");
-    btn.innerHTML = "<span class='spinner'></span> Syncing...";
-    btn.disabled = true;
-    
-    try {
-        const res = await fetch(`${API}/services?refresh=true`);
-        const data = await res.json();
-        if (data.success) {
-            showAlert('success', 'Store updated from Delix successfully!');
-        } else {
-            showAlert('error', 'Error: ' + (data.error || 'Unknown error'));
-        }
-    } catch(e) { 
-        showAlert('error', 'Sync failed: ' + e.message);
-    } finally {
-        btn.innerHTML = "<i class='fas fa-sync'></i> Refresh Delix Services Now";
-        btn.disabled = false;
-    }
-}
-
-/* --- USER & BALANCE CONTROL --- */
+/* =========================================
+ * 👤 USER CONTROL
+ * ========================================= */
 async function loadUsers() {
-  setActiveNav('nav-users', 'Master User Control');
-  const users = await adminFetch("/admin/users");
-  let html = `<input type="text" class="search-bar" placeholder="Search users..." onkeyup="search()">
-    <div class="table-container"><table id="userTable">
-    <tr><th>Identity</th><th>Balance</th><th>Actions</th></tr>`;
-
-  if(!users.error) {
-      users.forEach(u => {
-        html += `<tr>
-            <td><b>${u.username || 'User'}</b><br><small>${u.email}</small></td>
-            <td><span style="color:var(--primary); font-weight:bold;">KES ${(u.balance || 0).toFixed(2)}</span></td>
-            <td><button class="btn-balance" onclick="editBal('${u._id}', '${u.email}')">Update Balance</button></td>
-          </tr>`;
-      });
-  } else {
-      html += `<tr><td colspan="3" style="text-align:center; color:var(--danger);">Error: ${users.error}</td></tr>`;
-  }
-  document.getElementById("contentArea").innerHTML = html + `</table></div>`;
-}
-
-async function editBal(id, email) {
-    const amt = prompt(`Set absolute balance for ${email}:`);
-    if (amt === null || isNaN(amt)) return;
-    const res = await adminFetch("/admin/update-balance", "POST", { userId: id, amount: parseFloat(amt) });
-    if(res.success) { 
-        showAlert('success', 'Balance updated successfully!');
-        loadUsers(); 
-    } else {
-        showAlert('error', 'Failed: ' + res.error);
-    }
-}
-
-/* --- DEPOSITS & ORDERS --- */
-async function loadDeposits() {
-  setActiveNav('nav-deposits', 'Payment Verification');
-  const deposits = await adminFetch("/admin/deposits");
-  let html = `<div class="table-container"><table><tr><th>User</th><th>Amount</th><th>Code</th><th>Actions</th></tr>`;
-
-  if(!deposits.error) {
-      deposits.filter(d => d.status === "pending").reverse().forEach(d => {
-        html += `<tr>
-            <td>${d.userEmail}</td>
-            <td style="color:var(--success)">KES ${d.amount}</td>
-            <td><code>${d.transactionCode}</code></td>
-            <td>
-              <button class="btn-approve" onclick="actionDep('${d._id}', 'approve')"><i class="fas fa-check"></i></button>
-              <button class="btn-danger" onclick="actionDep('${d._id}', 'cancel')"><i class="fas fa-times"></i></button>
-            </td>
-        </tr>`;
-      });
-  } else {
-      html += `<tr><td colspan="4" style="text-align:center; color:var(--danger);">Error: ${deposits.error}</td></tr>`;
-  }
-  document.getElementById("contentArea").innerHTML = html + `</table></div>`;
-}
-
-async function actionDep(id, type) {
-  if(!confirm("Are you sure?")) return;
-  const endpoint = type === 'approve' ? "/admin/approve-deposit" : "/admin/cancel-deposit";
-  const res = await adminFetch(endpoint, "POST", { depositId: id });
-  if (res.success) {
-      showAlert('success', `Deposit ${type === 'approve' ? 'approved' : 'cancelled'} successfully!`);
-      loadDeposits(); 
-      loadStats();
-  } else {
-      showAlert('error', 'Failed: ' + res.error);
-  }
-}
-
-async function loadOrders() {
-    setActiveNav('nav-orders', 'Live Fulfillment Log');
-    const orders = await adminFetch("/admin/orders");
-    let html = `<div class="table-container"><table><tr><th>Client</th><th>Service</th><th>Link</th><th>Status</th></tr>`;
+    setActiveNav('nav-users', 'User Account Control Center');
+    const users = await adminFetch("/admin/users");
     
-    if(!orders.error) {
-        orders.reverse().slice(0, 50).forEach(o => {
-            html += `<tr><td><small>${o.userEmail}</small></td><td>${o.serviceId}</td><td><a href="${o.link}" target="_blank" style="color:var(--primary)">Open Link</a></td><td>${o.status}</td></tr>`;
-        });
-    } else {
-        html += `<tr><td colspan="4" style="text-align:center; color:var(--danger);">Error: ${orders.error}</td></tr>`;
+    if (!Array.isArray(users)) return;
+
+    let rows = users.map(u => `
+        <tr>
+            <td><b>${u.username || 'N/A'}</b><br><small style="color:var(--text-dim)">${u.email}</small></td>
+            <td>${u.phone || 'N/A'}</td>
+            <td style="color:var(--success); font-weight:bold;">KES ${Number(u.balance || 0).toFixed(2)}</td>
+            <td>
+                <button class="btn-balance" onclick="promptBalance('${u._id}', '${u.username}', ${u.balance || 0})">Edit Balance</button>
+            </td>
+        </tr>
+    `).join('');
+
+    document.getElementById("contentArea").innerHTML = `
+        <input type="text" class="search-bar" id="userSearch" onkeyup="filterTable('userTable', 0)" placeholder="Search users by name or email...">
+        <div class="table-container">
+            <table id="userTable">
+                <thead>
+                    <tr><th>User</th><th>Phone</th><th>Balance</th><th>Action</th></tr>
+                </thead>
+                <tbody>${rows}</tbody>
+            </table>
+        </div>
+    `;
+}
+
+async function promptBalance(userId, username, currentBalance) {
+    const val = prompt(`Enter new balance for ${username}:`, currentBalance);
+    if (val !== null && !isNaN(val)) {
+        const res = await adminFetch("/admin/update-balance", "POST", { userId, amount: parseFloat(val) });
+        if (res.success) {
+            showAlert("success", `Balance updated for ${username}!`);
+            loadUsers();
+        } else {
+            showAlert("error", "Failed to update balance.");
+        }
     }
-    document.getElementById("contentArea").innerHTML = html + `</table></div>`;
 }
 
 /* =========================================
- * SUPPORT TICKETS MANAGEMENT
+ * 💵 DEPOSITS MANAGEMENT
+ * ========================================= */
+async function loadDeposits() {
+    setActiveNav('nav-deposits', 'M-Pesa Deposit Requests');
+    const deposits = await adminFetch("/admin/deposits");
+
+    if (!Array.isArray(deposits)) return;
+
+    let rows = deposits.map(d => `
+        <tr>
+            <td>${d.userEmail || 'N/A'}</td>
+            <td><b>KES ${d.amount}</b></td>
+            <td><code>${d.transactionCode || d.code || 'N/A'}</code></td>
+            <td><span style="color:${d.status === 'completed' ? 'var(--success)' : d.status === 'pending' ? 'var(--warning)' : 'var(--danger)'}">${d.status.toUpperCase()}</span></td>
+            <td>
+                ${d.status === 'pending' ? `
+                    <button class="btn-approve" onclick="approveDeposit('${d._id}')">Approve</button>
+                    <button class="btn-danger" onclick="cancelDeposit('${d._id}')">Reject</button>
+                ` : 'N/A'}
+            </td>
+        </tr>
+    `).join('');
+
+    document.getElementById("contentArea").innerHTML = `
+        <div class="table-container">
+            <table>
+                <thead>
+                    <tr><th>User Email</th><th>Amount</th><th>Trx Ref</th><th>Status</th><th>Action</th></tr>
+                </thead>
+                <tbody>${rows}</tbody>
+            </table>
+        </div>
+    `;
+}
+
+async function approveDeposit(depositId) {
+    if (!confirm("Approve this deposit and credit user wallet?")) return;
+    const res = await adminFetch("/admin/approve-deposit", "POST", { depositId });
+    if (res.success) {
+        showAlert("success", "Deposit Approved Successfully!");
+        loadDeposits();
+    } else {
+        showAlert("error", res.error || "Approval Failed");
+    }
+}
+
+async function cancelDeposit(depositId) {
+    if (!confirm("Reject/Cancel this deposit request?")) return;
+    const res = await adminFetch("/admin/cancel-deposit", "POST", { depositId });
+    if (res.success) {
+        showAlert("success", "Deposit Cancelled!");
+        loadDeposits();
+    } else {
+        showAlert("error", res.error || "Cancellation Failed");
+    }
+}
+
+/* =========================================
+ * 📦 ORDERS MANAGEMENT
+ * ========================================= */
+async function loadOrders() {
+    setActiveNav('nav-orders', 'Global Order Log');
+    const orders = await adminFetch("/admin/orders");
+
+    if (!Array.isArray(orders)) return;
+
+    let rows = orders.map(o => `
+        <tr>
+            <td>${o.userEmail || 'N/A'}</td>
+            <td>${o.serviceName || 'Service'}</td>
+            <td>KES ${Number(o.cost || 0).toFixed(2)}</td>
+            <td><a href="${o.link}" target="_blank" style="color:var(--primary)">Target Link</a></td>
+            <td>${o.status.toUpperCase()}</td>
+        </tr>
+    `).join('');
+
+    document.getElementById("contentArea").innerHTML = `
+        <div class="table-container">
+            <table>
+                <thead>
+                    <tr><th>User</th><th>Service</th><th>Cost</th><th>Link</th><th>Status</th></tr>
+                </thead>
+                <tbody>${rows}</tbody>
+            </table>
+        </div>
+    `;
+}
+
+/* =========================================
+ * 🎫 SUPPORT TICKETS
  * ========================================= */
 async function loadTickets() {
-    setActiveNav('nav-tickets', 'Support Tickets');
+    setActiveNav('nav-tickets', 'Human Support Tickets');
     const tickets = await adminFetch("/admin/tickets");
-    
-    let html = `<div class="table-container"><table><tr><th>User</th><th>Message</th><th>Date</th><th>Status</th><th>Actions</th></tr>`;
-    
-    if (!tickets.error) {
-        if (tickets.length === 0) {
-            html += `<tr><td colspan="5" style="text-align:center; color: var(--text-dim); padding: 30px;">No support tickets found.</td></tr>`;
-        } else {
-            tickets.forEach(t => {
-                const date = new Date(t.createdAt).toLocaleString();
-                const statusColor = t.status === 'Open' ? 'var(--warning)' : 'var(--success)';
-                html += `<tr>
-                    <td><b>${t.username || 'Unknown'}</b><br><small style="color:var(--text-dim)">${t.userEmail}</small></td>
-                    <td style="max-width: 300px; word-wrap: break-word;">${t.message}</td>
-                    <td><small style="color:var(--text-dim)">${date}</small></td>
-                    <td><span style="color: ${statusColor}; font-weight: bold;">${t.status}</span></td>
-                    <td>
-                        ${t.status === 'Open' ? `<button class="btn-success" onclick="resolveTicket('${t._id}')"><i class="fas fa-check"></i> Resolve</button>` : '<small style="color:var(--text-dim)">Closed</small>'}
-                    </td>
-                </tr>`;
-            });
-        }
-    } else {
-        html += `<tr><td colspan="5" style="text-align:center; color:var(--danger);">Error: ${tickets.error}</td></tr>`;
-    }
-    document.getElementById("contentArea").innerHTML = html + `</table></div>`;
+
+    if (!Array.isArray(tickets)) return;
+
+    let rows = tickets.map(t => `
+        <tr>
+            <td>${t.username}<br><small style="color:var(--text-dim)">${t.userEmail}</small></td>
+            <td>${t.message}</td>
+            <td>${t.status}</td>
+            <td>
+                ${t.status === 'Open' ? `<button class="btn-approve" onclick="resolveTicket('${t._id}')">Resolve</button>` : 'Resolved'}
+            </td>
+        </tr>
+    `).join('');
+
+    document.getElementById("contentArea").innerHTML = `
+        <div class="table-container">
+            <table>
+                <thead>
+                    <tr><th>User</th><th>Message</th><th>Status</th><th>Action</th></tr>
+                </thead>
+                <tbody>${rows}</tbody>
+            </table>
+        </div>
+    `;
 }
 
-async function resolveTicket(id) {
-    if (!confirm("Mark this ticket as resolved?")) return;
-    const res = await adminFetch("/admin/resolve-ticket", "POST", { ticketId: id });
+async function resolveTicket(ticketId) {
+    const res = await adminFetch("/admin/resolve-ticket", "POST", { ticketId });
     if (res.success) {
-        showAlert('success', 'Ticket resolved successfully!');
+        showAlert("success", "Ticket Closed!");
         loadTickets();
-    } else {
-        showAlert('error', 'Failed: ' + res.error);
     }
 }
 
 /* =========================================
- * TOP TICKER MANAGEMENT
+ * 📢 TOP TICKER CONTROL
  * ========================================= */
-let currentTickerItems = [];
-
 async function loadTicker() {
-    setActiveNav('nav-ticker', 'Top Ticker Control');
-    const data = await adminFetch("/ticker");
-    
-    currentTickerItems = data.items || [];
-    const speed = data.speed || 80;
-    
-    let itemsHtml = '';
-    if (currentTickerItems.length === 0) {
-        itemsHtml = `<p style="color: var(--text-dim); text-align: center; padding: 20px;">No ticker messages added yet.</p>`;
-    } else {
-        currentTickerItems.forEach((item, index) => {
-            itemsHtml += `
-                <div class="ticker-item-row" id="ticker-row-${index}" style="display: flex; align-items: center; gap: 10px; padding: 12px; background: #1e293b; border-radius: 8px; margin-bottom: 10px;">
-                    <span id="ticker-text-${index}" style="flex: 1; color: white; word-break: break-word;">${item}</span>
-                    <div style="display: flex; gap: 8px; flex-shrink: 0;">
-                        <button class="btn-balance" onclick="editTickerItemUI(${index})" style="padding: 6px 12px; font-size: 12px;"><i class="fas fa-edit"></i> Edit</button>
-                        <button class="btn-danger" onclick="deleteTickerItem(${index})" style="padding: 6px 12px; font-size: 12px;"><i class="fas fa-trash"></i> Delete</button>
-                    </div>
-                </div>
-            `;
-        });
-    }
+    setActiveNav('nav-ticker', 'Scrolling Top Ticker Management');
+    const data = await adminFetch("/admin/ticker");
+
+    if (!data.success) return;
+
+    let itemsList = (data.items || []).map((item, idx) => `
+        <div style="display:flex; justify-content:space-between; align-items:center; background:#1e293b; padding:12px; border-radius:8px; margin-bottom:10px;">
+            <span>${item}</span>
+            <div>
+                <button class="btn-danger" onclick="deleteTickerItem(${idx})">Delete</button>
+            </div>
+        </div>
+    `).join('');
 
     document.getElementById("contentArea").innerHTML = `
         <div class="card">
-            <h3><i class="fas fa-tachometer-alt"></i> Animation Speed Control</h3>
-            <p style="color: var(--text-dim)">Control how fast the text moves across the top of the website. (Lower number = faster, Higher number = slower)</p>
-            <div style="display: flex; gap: 15px; align-items: center; margin-top: 15px; flex-wrap: wrap;">
-                <input type="number" id="tickerSpeedInput" value="${speed}" min="10" max="300" style="width: 100px; padding: 10px; background: #1e293b; border: 1px solid #334155; border-radius: 8px; color: white; font-size: 16px;">
-                <span style="color: var(--text-dim);">seconds per loop</span>
-                <button class="btn-balance" id="speedBtn" onclick="updateTickerSpeed()" style="margin-left: auto;"><i class="fas fa-save"></i> Save Speed</button>
+            <h3>Add New Ticker Announcement</h3>
+            <div style="display:flex; gap:10px; margin-top:10px;">
+                <input type="text" id="newTickerText" class="search-bar" style="margin:0" placeholder="Type announcement message...">
+                <button class="btn-purple" onclick="addTickerItem()">Add</button>
             </div>
         </div>
 
         <div class="card">
-            <h3><i class="fas fa-plus-circle"></i> Add New Ticker Message</h3>
-            <div style="display: flex; gap: 15px; margin-top: 15px; flex-wrap: wrap;">
-                <input type="text" id="newTickerItemInput" placeholder="e.g. 🔥 IG Followers KSh 37" style="flex: 1; min-width: 200px; padding: 12px; background: #1e293b; border: 1px solid #334155; border-radius: 8px; color: white;" onkeypress="if(event.key==='Enter')addTickerItem()">
-                <button class="btn-success" id="addTickerBtn" onclick="addTickerItem()" style="padding: 12px 24px;"><i class="fas fa-plus"></i> Add Item</button>
-            </div>
-            <p style="color: var(--text-dim); font-size: 12px; margin-top: 10px;">💡 Tip: Press Enter to quickly add items</p>
-        </div>
-
-        <div class="card">
-            <h3><i class="fas fa-list"></i> Current Ticker Messages (${currentTickerItems.length})</h3>
-            <div id="tickerItemsList" style="margin-top: 15px;">
-                ${itemsHtml}
-            </div>
+            <h3>Active Ticker Messages</h3>
+            <div style="margin-top:15px;">${itemsList || '<p style="color:var(--text-dim)">No active ticker items.</p>'}</div>
         </div>
     `;
 }
 
-function editTickerItemUI(index) {
-    const currentText = currentTickerItems[index];
-    const row = document.getElementById(`ticker-row-${index}`);
-    
-    row.innerHTML = `
-        <input type="text" id="edit-input-${index}" value="${currentText.replace(/"/g, '&quot;')}" style="flex: 1; padding: 10px; background: #0f172a; border: 1px solid var(--primary); border-radius: 6px; color: white;">
-        <button class="btn-success" onclick="saveTickerItem(${index})" style="padding: 8px 16px;"><i class="fas fa-check"></i> Save</button>
-        <button class="btn-danger" onclick="loadTicker()" style="padding: 8px 16px;"><i class="fas fa-times"></i> Cancel</button>
-    `;
-}
-
-async function saveTickerItem(index) {
-    const input = document.getElementById(`edit-input-${index}`);
-    const newText = input.value.trim();
-    if (!newText) {
-        showAlert('error', 'Text cannot be empty');
-        return;
-    }
-
-    const res = await adminFetch("/admin/ticker/edit", "PUT", { index, text: newText });
-    
+async function addTickerItem() {
+    const text = document.getElementById("newTickerText").value;
+    if (!text) return;
+    const res = await adminFetch("/admin/ticker/add", "POST", { text });
     if (res.success) {
-        showAlert('success', 'Ticker item updated successfully!');
+        showAlert("success", "Ticker item added!");
         loadTicker();
-    } else {
-        showAlert('error', 'Failed to update: ' + res.error);
     }
 }
 
 async function deleteTickerItem(index) {
-    if (!confirm("Are you sure you want to delete this message?")) return;
     const res = await adminFetch("/admin/ticker/delete", "DELETE", { index });
-    
     if (res.success) {
-        showAlert('success', 'Ticker item deleted successfully!');
+        showAlert("success", "Ticker item deleted!");
         loadTicker();
-    } else {
-        showAlert('error', 'Failed to delete: ' + res.error);
     }
-}
-
-async function addTickerItem() {
-    const input = document.getElementById('newTickerItemInput');
-    const btn = document.getElementById('addTickerBtn');
-    const text = input.value.trim();
-    
-    if (!text) {
-        showAlert('error', 'Please enter a message');
-        return;
-    }
-
-    btn.innerHTML = '<span class="spinner"></span> Adding...';
-    btn.disabled = true;
-
-    const res = await adminFetch("/admin/ticker/add", "POST", { text });
-
-    if (res.success) {
-        input.value = '';
-        showAlert('success', 'Ticker item added successfully!');
-        loadTicker();
-    } else {
-        showAlert('error', 'Failed to add: ' + res.error);
-        btn.innerHTML = '<i class="fas fa-plus"></i> Add Item';
-        btn.disabled = false;
-    }
-}
-
-async function updateTickerSpeed() {
-    const speed = parseInt(document.getElementById('tickerSpeedInput').value);
-    const btn = document.getElementById('speedBtn');
-    
-    if (isNaN(speed) || speed < 5) {
-        showAlert('error', 'Speed must be a number greater than 5');
-        return;
-    }
-
-    btn.innerHTML = '<span class="spinner"></span> Saving...';
-    btn.disabled = true;
-
-    const res = await adminFetch("/admin/ticker/speed", "PUT", { speed });
-    
-    if (res.success) {
-        showAlert('success', 'Ticker speed updated successfully!');
-    } else {
-        showAlert('error', 'Failed to update speed: ' + res.error);
-    }
-    
-    btn.innerHTML = '<i class="fas fa-save"></i> Save Speed';
-    btn.disabled = false;
 }
 
 /* =========================================
- * CHAT SECURITY & MODERATION LOGS
+ * 🛡️ CHAT SECURITY & MODERATION
  * ========================================= */
 async function loadChatLogs() {
-    setActiveNav('nav-chatlogs', 'Chat Security & Logs');
+    setActiveNav('nav-chatlogs', 'AI Chat Security & Moderation');
     const data = await adminFetch("/admin/chat-logs");
-    
-    if (data.error) {
-        document.getElementById("contentArea").innerHTML = `<div class="card" style="color:var(--danger)">Failed to load logs: ${data.error}</div>`;
-        return;
-    }
 
-    const logs = data.logs || [];
-    const bannedIds = data.bannedUserIds || [];
+    if (!data.logs) return;
 
-    let html = `
-        <div class="card" style="border-left: 5px solid var(--warning); margin-bottom: 20px;">
-            <h3><i class="fas fa-gavel"></i> Chat Moderation Dashboard</h3>
-            <p style="color: var(--text-dim); font-size: 14px;">Monitor all AI conversations in real-time. If a user violates terms, you can restrict their AI access for exactly 3 days.</p>
+    let rows = data.logs.map(l => `
+        <tr>
+            <td>${l.username}<br><small style="color:var(--text-dim)">${l.userEmail}</small></td>
+            <td><b>User:</b> ${l.userMessage}<br><small style="color:var(--primary)"><b>AI:</b> ${l.aiReply}</small></td>
+            <td>
+                ${data.bannedUserIds.includes(l.userId) ? 
+                    `<button class="btn-success" onclick="unbanUser('${l.userId}')">Unban User</button>` : 
+                    `<button class="btn-danger" onclick="banUser('${l.userId}')">Ban (3 Days)</button>`
+                }
+            </td>
+        </tr>
+    `).join('');
+
+    document.getElementById("contentArea").innerHTML = `
+        <div class="table-container">
+            <table>
+                <thead>
+                    <tr><th>User</th><th>Interaction Log</th><th>Action</th></tr>
+                </thead>
+                <tbody>${rows}</tbody>
+            </table>
         </div>
-        <div id="chatLogsContainer">
     `;
-
-    if (logs.length === 0) {
-        html += `<div class="card" style="text-align:center; color:var(--text-dim)">No chat logs yet.</div>`;
-    } else {
-        logs.forEach(log => {
-            const isBanned = bannedIds.includes(log.userId);
-            const date = new Date(log.createdAt).toLocaleString();
-            
-            html += `
-                <div class="card" style="margin-bottom: 15px; border-left: 3px solid ${isBanned ? 'var(--danger)' : 'var(--primary)'};">
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; flex-wrap: wrap; gap: 10px;">
-                        <div>
-                            <b style="color: white;">${log.username || 'Unknown'}</b> 
-                            <small style="color: var(--text-dim);">(${log.userEmail})</small>
-                            ${isBanned ? '<span style="background: var(--danger); color: white; padding: 2px 8px; border-radius: 10px; font-size: 11px; margin-left: 10px;">BANNED</span>' : ''}
-                        </div>
-                        <small style="color: var(--text-dim);">${date}</small>
-                    </div>
-                    
-                    <div style="background: #1e293b; padding: 10px; border-radius: 8px; margin-bottom: 8px;">
-                        <small style="color: var(--primary); font-weight: bold;">USER:</small>
-                        <p style="margin: 5px 0 0; color: white; word-break: break-word;">${log.userMessage}</p>
-                    </div>
-                    
-                    <div style="background: rgba(34, 197, 94, 0.1); padding: 10px; border-radius: 8px; margin-bottom: 15px;">
-                        <small style="color: var(--success); font-weight: bold;">AI REPLY:</small>
-                        <p style="margin: 5px 0 0; color: #d1d5db; word-break: break-word; white-space: pre-wrap;">${log.aiReply}</p>
-                    </div>
-
-                    <div style="display: flex; gap: 10px; justify-content: flex-end;">
-                        ${isBanned 
-                            ? `<button class="btn-success" onclick="unbanChat('${log.userId}')"><i class="fas fa-unlock"></i> Unban User</button>` 
-                            : `<button class="btn-danger" onclick="banChat('${log.userId}', '${log.userEmail}')"><i class="fas fa-gavel"></i> Ban for 3 Days</button>`
-                        }
-                    </div>
-                </div>
-            `;
-        });
-    }
-    
-    html += `</div>`;
-    document.getElementById("contentArea").innerHTML = html;
 }
 
-async function banChat(userId, email) {
-    const reason = prompt(`Ban ${email} from AI Chat for 3 days?\nEnter reason (optional):`);
-    if (reason === null) return;
-    
-    const res = await adminFetch("/admin/ban-chat", "POST", { userId, reason: reason || "Terms violation" });
-    if (res.success) {
-        showAlert('success', 'User banned from chat for 3 days.');
-        loadChatLogs();
-    } else {
-        showAlert('error', 'Failed: ' + res.error);
+async function banUser(userId) {
+    const reason = prompt("Enter ban reason:", "Violating Terms");
+    if (reason) {
+        const res = await adminFetch("/admin/ban-chat", "POST", { userId, reason });
+        if (res.success) {
+            showAlert("success", "User banned from AI chat!");
+            loadChatLogs();
+        }
     }
 }
 
-async function unbanChat(userId) {
-    if(!confirm("Remove chat ban for this user immediately?")) return;
+async function unbanUser(userId) {
     const res = await adminFetch("/admin/unban-chat", "POST", { userId });
     if (res.success) {
-        showAlert('success', 'User unbanned successfully.');
+        showAlert("success", "User unbanned!");
         loadChatLogs();
-    } else {
-        showAlert('error', 'Failed: ' + res.error);
     }
 }
 
-/* --- GLOBAL SITE CONTROL --- */
+/* =========================================
+ * 🌐 SITE CONTROL & MAINTENANCE
+ * ========================================= */
 async function loadSiteControl() {
     setActiveNav('nav-site', 'Global Site Control');
-    
-    let maintenanceStatus = false;
-    try {
-        const settings = await fetch(`${API}/settings`);
-        const settingsData = await settings.json();
-        maintenanceStatus = settingsData.maintenance === true;
-    } catch(e) {
-        console.log("Could not fetch maintenance status");
-    }
-    
+    const settings = await adminFetch("/settings");
+    const isMaintenance = settings.maintenance === true;
+
     document.getElementById("contentArea").innerHTML = `
-        <div class="card">
-            <h3><i class="fas fa-broadcast-tower"></i> Global Announcements</h3>
-            <p style="color: var(--text-dim)">Send a push notification or banner to all active users on the main website.</p>
-            <textarea id="announcementText" class="search-bar" style="height: 100px; resize: vertical;" placeholder="Type your message to all users..."></textarea>
-            <button class="btn-balance" id="announceBtn" style="margin-top: 10px; padding: 12px 20px;" onclick="sendAnnouncement()"><i class="fas fa-paper-plane"></i> Broadcast to All Users</button>
-        </div>
-        
-        <div class="card">
-            <h3><i class="fas fa-tools"></i> System Maintenance</h3>
-            
-            <div class="maintenance-status ${maintenanceStatus ? 'offline' : 'online'}">
-                <div class="status-icon ${maintenanceStatus ? 'offline' : 'online'}">
-                    <i class="fas ${maintenanceStatus ? 'fa-exclamation-triangle' : 'fa-check-circle'}"></i>
-                </div>
-                <div class="status-text">
-                    <h3 style="color: ${maintenanceStatus ? 'var(--danger)' : 'var(--success)'}">
-                        ${maintenanceStatus ? 'MAINTENANCE MODE: ON' : 'MAINTENANCE MODE: OFF'}
-                    </h3>
-                    <p>${maintenanceStatus ? 'Website is currently BLOCKED for all users' : 'Website is ONLINE and accessible to all users'}</p>
-                </div>
+        <div class="maintenance-status ${isMaintenance ? 'offline' : 'online'}">
+            <div class="status-icon ${isMaintenance ? 'offline' : 'online'}">
+                <i class="fas ${isMaintenance ? 'fa-tools' : 'fa-check-circle'}"></i>
             </div>
-            
+            <div class="status-text">
+                <h3>System Status: ${isMaintenance ? 'MAINTENANCE MODE ACTIVE' : 'LIVE ONLINE'}</h3>
+                <p>${isMaintenance ? 'Users cannot place orders or access services.' : 'All services and payment gateways functioning normally.'}</p>
+            </div>
+        </div>
+
+        <div class="card">
+            <h3>Maintenance Mode Switch</h3>
             <div class="maintenance-buttons">
-                <button class="btn-danger" id="maintOnBtn" onclick="turnMaintenanceOn()" ${maintenanceStatus ? 'disabled style="opacity: 0.5; cursor: not-allowed;"' : ''}>
-                    <i class="fas fa-power-off"></i> Turn ON Maintenance
-                </button>
-                <button class="btn-success" id="maintOffBtn" onclick="turnMaintenanceOff()" ${!maintenanceStatus ? 'disabled style="opacity: 0.5; cursor: not-allowed;"' : ''}>
-                    <i class="fas fa-play"></i> Turn OFF Maintenance
-                </button>
+                <button class="btn-danger" onclick="toggleMaintenance('on')">Activate Maintenance Mode</button>
+                <button class="btn-success" onclick="toggleMaintenance('off')">Deactivate (Go Live)</button>
             </div>
-            
-            <p style="color: var(--text-dim); font-size: 13px; margin-top: 15px;">
-                <i class="fas fa-info-circle"></i> When maintenance is ON, users will see a maintenance page instead of the website.
-            </p>
         </div>
-        
+
         <div class="card">
-            <h3><i class="fas fa-database"></i> Database Management</h3>
-            <p style="color: var(--text-dim)">Clear cached data or reset specific system modules.</p>
-            <button class="btn-balance" style="padding: 12px 20px; margin-right: 10px;" onclick="clearCache()"><i class="fas fa-broom"></i> Clear System Cache</button>
-            <button class="btn-danger" style="padding: 12px 20px;" onclick="resetSystem()"><i class="fas fa-exclamation-triangle"></i> Reset Failed Transactions</button>
+            <h3>Global Announcement Banner</h3>
+            <div style="display:flex; gap:10px; margin-top:10px;">
+                <input type="text" id="announceMsg" class="search-bar" style="margin:0" value="${settings.announcement || ''}" placeholder="Type announcement banner message...">
+                <button class="btn-purple" onclick="saveAnnouncement()">Broadcast</button>
+            </div>
         </div>
     `;
 }
 
-async function sendAnnouncement() {
-    const msg = document.getElementById('announcementText').value;
-    const btn = document.getElementById('announceBtn');
-    if(!msg) {
-        showAlert('error', 'Please enter a message.');
-        return;
-    }
-    
-    btn.innerHTML = '<span class="spinner"></span> Sending...';
-    btn.disabled = true;
-    
-    const res = await adminFetch("/admin/announce", "POST", { message: msg });
-    
-    btn.innerHTML = '<i class="fas fa-paper-plane"></i> Broadcast to All Users';
-    btn.disabled = false;
-    
+async function toggleMaintenance(action) {
+    const res = await adminFetch("/admin/maintenance", "POST", { action });
     if (res.success) {
-        showAlert('success', 'Broadcast sent successfully!');
-    } else {
-        showAlert('error', 'Failed: ' + res.error);
-    }
-}
-
-async function turnMaintenanceOn() {
-    if(!confirm("⚠️ WARNING: This will BLOCK all users from accessing the website. Are you sure?")) return;
-    
-    const btn = document.getElementById('maintOnBtn');
-    btn.innerHTML = '<span class="spinner"></span> Turning ON...';
-    btn.disabled = true;
-    
-    const res = await adminFetch("/admin/maintenance", "POST", { action: "on" });
-    if(res.success) {
-        showAlert('success', 'Maintenance mode turned ON. Users cannot access the website.');
+        showAlert("success", `Maintenance mode set to: ${res.maintenance ? 'ACTIVE' : 'OFF'}`);
         loadSiteControl();
-    } else {
-        showAlert('error', 'Failed: ' + res.error);
-        btn.innerHTML = '<i class="fas fa-power-off"></i> Turn ON Maintenance';
-        btn.disabled = false;
     }
 }
 
-async function turnMaintenanceOff() {
-    if(!confirm("Turn OFF maintenance mode? This will allow users to access the website again.")) return;
-    
-    const btn = document.getElementById('maintOffBtn');
-    btn.innerHTML = '<span class="spinner"></span> Turning OFF...';
-    btn.disabled = true;
-    
-    const res = await adminFetch("/admin/maintenance", "POST", { action: "off" });
-    if(res.success) {
-        showAlert('success', 'Maintenance mode turned OFF. Users can now access the website.');
-        loadSiteControl();
-    } else {
-        showAlert('error', 'Failed: ' + res.error);
-        btn.innerHTML = '<i class="fas fa-play"></i> Turn OFF Maintenance';
-        btn.disabled = false;
-    }
-}
-
-async function clearCache() {
-    if(!confirm("Clear all system caches?")) return;
-    const res = await adminFetch("/admin/clear-cache", "POST");
+async function saveAnnouncement() {
+    const message = document.getElementById("announceMsg").value;
+    const res = await adminFetch("/admin/announce", "POST", { message });
     if (res.success) {
-        showAlert('success', 'Cache cleared.');
-    } else {
-        showAlert('error', 'Failed: ' + res.error);
+        showAlert("success", "Global Announcement Broadcasted!");
     }
 }
 
-async function resetSystem() {
-    if(!confirm("Reset all failed transactions? This cannot be undone.")) return;
-    const res = await adminFetch("/admin/reset-failed", "POST");
-    if (res.success) {
-        showAlert('success', 'Failed transactions reset.');
-    } else {
-        showAlert('error', 'Failed: ' + res.error);
-    }
-}
-
-/* --- UTILS --- */
-function setActiveNav(id, title) {
+/* =========================================
+ * UTILITY HELPERS
+ * ========================================= */
+function setActiveNav(navId, pageTitle) {
     document.querySelectorAll('.sidebar a').forEach(a => a.classList.remove('active'));
-    document.getElementById(id).classList.add('active');
-    document.getElementById("pageTitle").innerText = title;
+    const activeEl = document.getElementById(navId);
+    if (activeEl) activeEl.classList.add('active');
+    document.getElementById('pageTitle').innerText = pageTitle;
 }
 
-function search() {
-    let filter = document.querySelector(".search-bar").value.toUpperCase();
-    let tr = document.getElementById("userTable").getElementsByTagName("tr");
+function filterTable(tableId, colIdx) {
+    const input = document.getElementById("userSearch");
+    const filter = input.value.toUpperCase();
+    const table = document.getElementById(tableId);
+    const tr = table.getElementsByTagName("tr");
+
     for (let i = 1; i < tr.length; i++) {
-        tr[i].style.display = tr[i].innerText.toUpperCase().includes(filter) ? "" : "none";
+        let td = tr[i].getElementsByTagName("td")[colIdx];
+        if (td) {
+            let txtValue = td.textContent || td.innerText;
+            tr[i].style.display = txtValue.toUpperCase().indexOf(filter) > -1 ? "" : "none";
+        }
     }
 }
 
-window.onload = function() {
+// Initial Load
+window.onload = () => {
     loadStats();
 };
 </script>
+
 </body>
 </html>
