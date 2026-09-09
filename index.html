@@ -347,6 +347,19 @@ input:checked + .slider:before { transform: translateX(22px); }
     margin: 0;
 }
 
+/* --- SUBSCRIPTION BADGE --- */
+.badge-subscription {
+    background: rgba(139, 92, 246, 0.2);
+    color: var(--accent-purple);
+    border: 1px solid var(--accent-purple);
+    padding: 3px 8px;
+    border-radius: 6px;
+    font-size: 11px;
+    font-weight: bold;
+    text-transform: uppercase;
+    display: inline-block;
+}
+
 @media (max-width: 768px) {
     .sidebar { width: 70px; }
     .sidebar span, .sidebar h2, .sidebar .site-name { display: none; }
@@ -453,7 +466,7 @@ async function adminFetch(endpoint, method = "GET", body = null) {
 }
 
 /* =========================================
- * 🔑 ACTIVATION CODES MANAGEMENT
+ * 🔑 ACTIVATION CODES MANAGEMENT (SUBSCRIPTION-BASED)
  * ========================================= */
 async function loadActivationCodes() {
     setActiveNav('nav-activation', 'Activation Code Management');
@@ -476,22 +489,31 @@ async function loadActivationCodes() {
 
     let html = `
         <div class="card">
-            <h3><i class="fas fa-key" style="color: var(--primary);"></i> Generate Activation Code</h3>
+            <h3><i class="fas fa-key" style="color: var(--primary);"></i> Generate Subscription Activation Code</h3>
             <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-top: 15px;">
+                <div>
+                    <label style="display: block; margin-bottom: 5px; color: var(--text-dim); font-size: 12px;">Subscription Plan</label>
+                    <select id="genSubscriptionPlan" class="search-bar" style="margin-bottom: 0;" onchange="autoFillPlanDetails()">
+                        <option value="basic">Basic Plan</option>
+                        <option value="pro" selected>Pro Plan</option>
+                        <option value="vip">VIP Plan</option>
+                        <option value="reseller">Reseller Plan</option>
+                    </select>
+                </div>
                 <div>
                     <label style="display: block; margin-bottom: 5px; color: var(--text-dim); font-size: 12px;">Custom Code (Optional)</label>
                     <input type="text" id="genCustomCode" class="search-bar" style="margin-bottom: 0;" placeholder="Auto-generated if blank">
                 </div>
                 <div>
                     <label style="display: block; margin-bottom: 5px; color: var(--text-dim); font-size: 12px;">Value Amount (KES)</label>
-                    <input type="number" id="genAmount" class="search-bar" style="margin-bottom: 0;" value="100" min="1">
+                    <input type="number" id="genAmount" class="search-bar" style="margin-bottom: 0;" value="500" min="1">
                 </div>
                 <div>
                     <label style="display: block; margin-bottom: 5px; color: var(--text-dim); font-size: 12px;">Max Uses</label>
                     <input type="number" id="genMaxUses" class="search-bar" style="margin-bottom: 0;" value="1" min="1">
                 </div>
-                <div style="display: flex; align-items: flex-end;">
-                    <button class="btn-success" onclick="generateActivationCode()" id="btnGenCode" style="width: 100%; padding: 12px;"><i class="fas fa-plus"></i> Generate Code</button>
+                <div style="display: flex; align-items: flex-end; grid-column: span 2;">
+                    <button class="btn-success" onclick="generateActivationCode()" id="btnGenCode" style="width: 100%; padding: 12px;"><i class="fas fa-plus"></i> Generate Subscription Code</button>
                 </div>
             </div>
         </div>
@@ -500,6 +522,7 @@ async function loadActivationCodes() {
             <table>
                 <tr>
                     <th>Code</th>
+                    <th>Target Subscription</th>
                     <th>Value</th>
                     <th>Uses</th>
                     <th>Status</th>
@@ -509,15 +532,17 @@ async function loadActivationCodes() {
     `;
 
     if (codes.length === 0) {
-        html += `<tr><td colspan="6" style="text-align:center; color: var(--text-dim); padding: 30px;">No activation codes found.</td></tr>`;
+        html += `<tr><td colspan="7" style="text-align:center; color: var(--text-dim); padding: 30px;">No activation codes found.</td></tr>`;
     } else {
         codes.forEach(c => {
             const isUsed = c.usedCount >= c.maxUses;
             const statusBadge = isUsed ? '<span style="color: var(--danger); font-weight: bold;">USED</span>' : '<span style="color: var(--success); font-weight: bold;">ACTIVE</span>';
             const date = new Date(c.createdAt).toLocaleString();
+            const planDisplay = (c.subscriptionPlan || c.subscriptionType || 'PRO').toUpperCase();
             
             html += `<tr>
                 <td><code>${c.code}</code></td>
+                <td><span class="badge-subscription">${planDisplay}</span></td>
                 <td style="color: var(--primary); font-weight: bold;">KES ${(c.amount || 0).toFixed(2)}</td>
                 <td>${c.usedCount || 0} / ${c.maxUses || 1}</td>
                 <td>${statusBadge}</td>
@@ -533,8 +558,18 @@ async function loadActivationCodes() {
     document.getElementById("contentArea").innerHTML = html;
 }
 
+function autoFillPlanDetails() {
+    const plan = document.getElementById('genSubscriptionPlan').value;
+    const amountInput = document.getElementById('genAmount');
+    if (plan === 'basic') amountInput.value = 250;
+    else if (plan === 'pro') amountInput.value = 500;
+    else if (plan === 'vip') amountInput.value = 1000;
+    else if (plan === 'reseller') amountInput.value = 2500;
+}
+
 async function generateActivationCode() {
     const code = document.getElementById('genCustomCode').value.trim();
+    const subscriptionPlan = document.getElementById('genSubscriptionPlan').value;
     const amount = parseFloat(document.getElementById('genAmount').value);
     const maxUses = parseInt(document.getElementById('genMaxUses').value);
 
@@ -543,18 +578,29 @@ async function generateActivationCode() {
         return;
     }
 
+    if (!subscriptionPlan) {
+        showAlert('error', 'Please select a target subscription plan!');
+        return;
+    }
+
     const btn = document.getElementById('btnGenCode');
     btn.innerHTML = '<span class="spinner"></span> Generating...';
     btn.disabled = true;
 
-    const res = await adminFetch("/admin/activation-codes/generate", "POST", { code, amount, maxUses });
+    const res = await adminFetch("/admin/activation-codes/generate", "POST", { 
+        code, 
+        subscriptionPlan, 
+        subscriptionType: subscriptionPlan,
+        amount, 
+        maxUses 
+    });
 
     if (res.success) {
-        showAlert('success', 'Activation code generated successfully!');
+        showAlert('success', `Activation code generated explicitly for ${subscriptionPlan.toUpperCase()} subscription!`);
         loadActivationCodes();
     } else {
         showAlert('error', 'Failed to generate code: ' + (res.error || 'Unknown error'));
-        btn.innerHTML = '<i class="fas fa-plus"></i> Generate Code';
+        btn.innerHTML = '<i class="fas fa-plus"></i> Generate Subscription Code';
         btn.disabled = false;
     }
 }
@@ -1157,19 +1203,21 @@ async function loadUsers() {
   const users = await adminFetch("/admin/users");
   let html = `<input type="text" class="search-bar" placeholder="Search users..." onkeyup="search()">
     <div class="table-container"><table id="userTable">
-    <tr><th>Identity</th><th>Balance</th><th>Actions</th></tr>`;
+    <tr><th>Identity</th><th>Subscription Plan</th><th>Balance</th><th>Actions</th></tr>`;
 
   if(!users.error) {
       const userList = Array.isArray(users) ? users : users.data || [];
       userList.forEach(u => {
+        const plan = (u.subscriptionPlan || u.plan || 'Free').toUpperCase();
         html += `<tr>
             <td><b>${u.username || 'User'}</b><br><small>${u.email}</small></td>
+            <td><span class="badge-subscription">${plan}</span></td>
             <td><span style="color:var(--primary); font-weight:bold;">KES ${(u.balance || 0).toFixed(2)}</span></td>
             <td><button class="btn-balance" onclick="editBal('${u._id}', '${u.email}')">Update Balance</button></td>
           </tr>`;
       });
   } else {
-      html += `<tr><td colspan="3" style="text-align:center; color:var(--danger);">Error: ${users.error}</td></tr>`;
+      html += `<tr><td colspan="4" style="text-align:center; color:var(--danger);">Error: ${users.error}</td></tr>`;
   }
   document.getElementById("contentArea").innerHTML = html + `</table></div>`;
 }
