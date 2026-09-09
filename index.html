@@ -605,10 +605,23 @@ async function uploadAudioFile(fileInputId, urlInputId, btnId, audioType, status
     btn.innerHTML = '<span class="spinner"></span> Processing...';
     btn.disabled = true;
 
-    const reader = new FileReader();
-    reader.onload = async function(e) {
-        const base64Data = e.target.result;
-        
+    if (statusDiv) {
+        statusDiv.className = 'upload-status show info';
+        statusDiv.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Converting file to Base64...';
+    }
+
+    try {
+        const base64Data = await new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(reader.result);
+            reader.onerror = reject;
+            reader.readAsDataURL(file);
+        });
+
+        if (statusDiv) {
+            statusDiv.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Uploading to server...';
+        }
+
         const res = await adminFetch("/admin/audio/upload", "POST", {
             audioType,
             audioData: base64Data,
@@ -617,27 +630,1037 @@ async function uploadAudioFile(fileInputId, urlInputId, btnId, audioType, status
         });
 
         if (res.success) {
+            if (urlInput) urlInput.value = res.url || base64Data;
+            if (statusDiv) {
+                statusDiv.className = 'upload-status show success';
+                statusDiv.innerHTML = `<i class="fas fa-check-circle"></i> File "${file.name}" uploaded successfully!`;
+            }
             showAlert('success', `${file.name} uploaded successfully!`);
-            if (urlInput) urlInput.value = base64Data;
+            fileInput.value = '';
+            setTimeout(() => { loadAudioSettingsAdmin(); }, 1000);
         } else {
+            if (statusDiv) {
+                statusDiv.className = 'upload-status show error';
+                statusDiv.innerHTML = `<i class="fas fa-exclamation-circle"></i> Upload failed: ${res.error || 'Unknown error'}`;
+            }
             showAlert('error', 'Failed to upload audio: ' + (res.error || 'Unknown error'));
         }
+    } catch (err) {
+        console.error('[UPLOAD] Error:', err);
+        if (statusDiv) {
+            statusDiv.className = 'upload-status show error';
+            statusDiv.innerHTML = `<i class="fas fa-exclamation-circle"></i> Upload error: ${err.message}`;
+        }
+        showAlert('error', 'Upload error: ' + err.message);
+    } finally {
         btn.innerHTML = '<i class="fas fa-upload"></i> Upload Audio';
         btn.disabled = false;
-    };
-
-    reader.onerror = function() {
-        showAlert('error', 'Failed to read audio file.');
-        btn.innerHTML = '<i class="fas fa-upload"></i> Upload Audio';
-        btn.disabled = false;
-    };
-
-    reader.readAsDataURL(file);
+    }
 }
 
-// Initial load
-loadActivationCodes();
-</script>
+async function deleteAudioFile(audioType, urlInputId) {
+    if (!confirm('Are you sure you want to delete this audio file?')) return;
+    
+    try {
+        const res = await adminFetch('/admin/audio/file/' + audioType, 'DELETE');
+        if (res.success) {
+            document.getElementById(urlInputId).value = '';
+            showAlert('success', 'Audio file deleted successfully!');
+            loadAudioSettingsAdmin();
+        } else {
+            showAlert('error', 'Failed to delete: ' + (res.error || 'Unknown error'));
+        }
+    } catch (err) {
+        showAlert('error', 'Delete error: ' + err.message);
+    }
+}
 
+/* =========================================
+ * 🎵 AUDIO & SOUND MANAGEMENT
+ * ========================================= */
+async function loadAudioSettingsAdmin() {
+    setActiveNav('nav-audio', 'Audio & Sound Settings');
+    
+    document.getElementById("contentArea").innerHTML = `
+        <div class="card" style="text-align: center; color: var(--text-dim);">
+            <i class="fas fa-spinner fa-spin" style="font-size: 24px; margin-bottom: 10px;"></i>
+            <p>Loading Audio Settings...</p>
+        </div>
+    `;
+
+    const data = await adminFetch("/admin/audio/settings");
+    
+    if (data.error) {
+        document.getElementById("contentArea").innerHTML = `<div class="card" style="color:var(--danger)">Failed to load audio settings: ${data.error}</div>`;
+        return;
+    }
+
+    const settings = data.data || {};
+    const parseBool = (val) => val === true || val === 'true' || val === 1 || val === '1';
+
+    const bgMusic = settings.bgMusic || { enabled: true, url: '', volume: 0.3 };
+    const welcomeVoice = settings.welcomeVoice || { enabled: false, url: '' };
+    const successSound = settings.successSound || { enabled: true, url: '' };
+    const notificationSound = settings.notificationSound || { enabled: true, url: '' };
+    const loginSound = settings.loginSound || { enabled: true, url: '' };
+
+    const isBase64 = (url) => url && url.startsWith('data:audio/');
+    
+    const getBase64Size = (base64) => {
+        if (!base64 || !isBase64(base64)) return null;
+        const base64Length = base64.length - (base64.indexOf(',') + 1);
+        const sizeInBytes = (base64Length * 3) / 4;
+        return (sizeInBytes / 1024 / 1024).toFixed(2);
+    };
+
+    const generateFileDisplay = (url, audioType, urlInputId) => {
+        if (!url) return `<div class="no-file"><i class="fas fa-file-audio"></i> No file uploaded yet</div>`;
+        
+        if (isBase64(url)) {
+            const size = getBase64Size(url);
+            return `
+                <div class="uploaded-file-card">
+                    <div class="file-info">
+                        <div class="file-icon"><i class="fas fa-file-audio"></i></div>
+                        <div class="file-details">
+                            <h4>✅ Uploaded Audio File</h4>
+                            <small>Size: ${size} MB • Stored in Database</small>
+                        </div>
+                    </div>
+                    <audio controls class="audio-player" src="${url}"></audio>
+                    <div class="file-actions">
+                        <button type="button" class="btn-danger" onclick="deleteAudioFile('${audioType}', '${urlInputId}')" style="padding: 8px 16px; font-size: 12px;">
+                            <i class="fas fa-trash"></i> Delete File
+                        </button>
+                    </div>
+                </div>`;
+        } else {
+            return `
+                <div class="uploaded-file-card">
+                    <div class="file-info">
+                        <div class="file-icon"><i class="fas fa-link"></i></div>
+                        <div class="file-details">
+                            <h4>Active Link</h4>
+                            <small>${url.substring(0, 50)}...</small>
+                        </div>
+                    </div>
+                    <audio controls class="audio-player" src="${url}"></audio>
+                </div>`;
+        }
+    };
+
+    document.getElementById("contentArea").innerHTML = `
+        <form id="audioSettingsForm" onsubmit="saveAudioSettingsAdmin(event)">
+            <div class="card">
+                <h3><i class="fas fa-music" style="color: var(--primary);"></i> Background Music</h3>
+                <p style="color: var(--text-dim); font-size: 14px;">Continuous music playing in the background of the website.</p>
+                <div style="display: flex; align-items: center; gap: 15px; margin-top: 15px; flex-wrap: wrap;">
+                    <label class="toggle-switch">
+                        <input type="checkbox" id="bgMusicEnabled" ${parseBool(bgMusic.enabled) ? 'checked' : ''}>
+                        <span class="slider"></span>
+                    </label>
+                    <span>Enable Background Music</span>
+                </div>
+                <div style="margin-top: 20px;">
+                    <label style="display: block; margin-bottom: 8px; color: var(--text-dim); font-size: 14px;">📁 Upload Audio File (MP3, WAV, OGG - Max 10MB)</label>
+                    <div style="display: flex; gap: 10px; flex-wrap: wrap; align-items: center;">
+                        <input type="file" id="bgMusicFile" accept="audio/*" style="flex: 1; min-width: 150px; padding: 8px; background: #1e293b; border: 1px solid #334155; border-radius: 8px; color: white; font-size: 13px;">
+                        <button type="button" class="btn-success" onclick="uploadAudioFile('bgMusicFile', 'bgMusicUrl', 'bgMusicUploadBtn', 'bgMusic', 'bgMusicStatus')" id="bgMusicUploadBtn" style="padding: 10px 15px; white-space: nowrap;">
+                            <i class="fas fa-upload"></i> Upload
+                        </button>
+                    </div>
+                    <div id="bgMusicStatus" class="upload-status"></div>
+                    <label style="display: block; margin-top: 15px; margin-bottom: 8px; color: var(--text-dim); font-size: 14px;">Or Paste External URL</label>
+                    <input type="text" id="bgMusicUrl" value="${isBase64(bgMusic.url) ? '' : (bgMusic.url || '')}" class="search-bar" style="margin-bottom: 0;" placeholder="https://... or /sounds/...">
+                    ${generateFileDisplay(bgMusic.url, 'bgMusic', 'bgMusicUrl')}
+                </div>
+                <div style="margin-top: 20px;">
+                    <label style="display: block; margin-bottom: 8px; color: var(--text-dim); font-size: 14px;">Volume: <span id="bgVolumeDisplay">${Math.round((bgMusic.volume || 0.3) * 100)}</span>%</label>
+                    <input type="range" id="bgMusicVolume" min="0" max="100" value="${Math.round((bgMusic.volume || 0.3) * 100)}" 
+                           oninput="document.getElementById('bgVolumeDisplay').textContent = this.value"
+                           style="width: 100%; accent-color: var(--primary);">
+                </div>
+            </div>
+
+            <div class="card" style="border-left: 4px solid var(--accent-purple);">
+                <h3><i class="fas fa-broadcast-tower" style="color: var(--accent-purple);"></i> Login Welcome Broadcast (Radio Style)</h3>
+                <div style="display: flex; align-items: center; gap: 15px; margin-top: 15px; flex-wrap: wrap;">
+                    <label class="toggle-switch">
+                        <input type="checkbox" id="welcomeVoiceEnabled" ${parseBool(welcomeVoice.enabled) ? 'checked' : ''}>
+                        <span class="slider"></span>
+                    </label>
+                    <span>Enable Welcome Voice</span>
+                </div>
+                <div style="margin-top: 20px;">
+                    <label style="display: block; margin-bottom: 8px; color: var(--text-dim); font-size: 14px;">📁 Upload Voice File (MP3, WAV, OGG - Max 10MB)</label>
+                    <div style="display: flex; gap: 10px; flex-wrap: wrap; align-items: center;">
+                        <input type="file" id="welcomeVoiceFile" accept="audio/*" style="flex: 1; min-width: 150px; padding: 8px; background: #1e293b; border: 1px solid #334155; border-radius: 8px; color: white; font-size: 13px;">
+                        <button type="button" class="btn-success" onclick="uploadAudioFile('welcomeVoiceFile', 'welcomeVoiceUrl', 'welcomeVoiceUploadBtn', 'welcomeVoice', 'welcomeVoiceStatus')" id="welcomeVoiceUploadBtn" style="padding: 10px 15px; white-space: nowrap;">
+                            <i class="fas fa-upload"></i> Upload
+                        </button>
+                    </div>
+                    <div id="welcomeVoiceStatus" class="upload-status"></div>
+                    <label style="display: block; margin-top: 15px; margin-bottom: 8px; color: var(--text-dim); font-size: 14px;">Or Paste External URL</label>
+                    <input type="text" id="welcomeVoiceUrl" value="${isBase64(welcomeVoice.url) ? '' : (welcomeVoice.url || '')}" class="search-bar" style="margin-bottom: 0;" placeholder="https://... or /sounds/...">
+                    ${generateFileDisplay(welcomeVoice.url, 'welcomeVoice', 'welcomeVoiceUrl')}
+                </div>
+            </div>
+
+            <div class="card">
+                <h3><i class="fas fa-check-circle" style="color: var(--success);"></i> Success Sound</h3>
+                <div style="display: flex; align-items: center; gap: 15px; margin-top: 15px; flex-wrap: wrap;">
+                    <label class="toggle-switch">
+                        <input type="checkbox" id="successSoundEnabled" ${parseBool(successSound.enabled) ? 'checked' : ''}>
+                        <span class="slider"></span>
+                    </label>
+                    <span>Enable Success Sound</span>
+                </div>
+                <div style="margin-top: 20px;">
+                    <label style="display: block; margin-bottom: 8px; color: var(--text-dim); font-size: 14px;">📁 Upload Sound File (MP3, WAV, OGG - Max 10MB)</label>
+                    <div style="display: flex; gap: 10px; flex-wrap: wrap; align-items: center;">
+                        <input type="file" id="successSoundFile" accept="audio/*" style="flex: 1; min-width: 150px; padding: 8px; background: #1e293b; border: 1px solid #334155; border-radius: 8px; color: white; font-size: 13px;">
+                        <button type="button" class="btn-success" onclick="uploadAudioFile('successSoundFile', 'successSoundUrl', 'successSoundUploadBtn', 'successSound', 'successSoundStatus')" id="successSoundUploadBtn" style="padding: 10px 15px; white-space: nowrap;">
+                            <i class="fas fa-upload"></i> Upload
+                        </button>
+                    </div>
+                    <div id="successSoundStatus" class="upload-status"></div>
+                    <label style="display: block; margin-top: 15px; margin-bottom: 8px; color: var(--text-dim); font-size: 14px;">Or Paste External URL</label>
+                    <input type="text" id="successSoundUrl" value="${isBase64(successSound.url) ? '' : (successSound.url || '')}" class="search-bar" style="margin-bottom: 0;" placeholder="https://... or /sounds/...">
+                    ${generateFileDisplay(successSound.url, 'successSound', 'successSoundUrl')}
+                </div>
+            </div>
+
+            <div class="card">
+                <h3><i class="fas fa-bell" style="color: var(--warning);"></i> Notification Sound</h3>
+                <div style="display: flex; align-items: center; gap: 15px; margin-top: 15px; flex-wrap: wrap;">
+                    <label class="toggle-switch">
+                        <input type="checkbox" id="notificationSoundEnabled" ${parseBool(notificationSound.enabled) ? 'checked' : ''}>
+                        <span class="slider"></span>
+                    </label>
+                    <span>Enable Notification Sound</span>
+                </div>
+                <div style="margin-top: 20px;">
+                    <label style="display: block; margin-bottom: 8px; color: var(--text-dim); font-size: 14px;">📁 Upload Sound File (MP3, WAV, OGG - Max 10MB)</label>
+                    <div style="display: flex; gap: 10px; flex-wrap: wrap; align-items: center;">
+                        <input type="file" id="notificationSoundFile" accept="audio/*" style="flex: 1; min-width: 150px; padding: 8px; background: #1e293b; border: 1px solid #334155; border-radius: 8px; color: white; font-size: 13px;">
+                        <button type="button" class="btn-success" onclick="uploadAudioFile('notificationSoundFile', 'notificationSoundUrl', 'notificationSoundUploadBtn', 'notificationSound', 'notificationSoundStatus')" id="notificationSoundUploadBtn" style="padding: 10px 15px; white-space: nowrap;">
+                            <i class="fas fa-upload"></i> Upload
+                        </button>
+                    </div>
+                    <div id="notificationSoundStatus" class="upload-status"></div>
+                    <label style="display: block; margin-top: 15px; margin-bottom: 8px; color: var(--text-dim); font-size: 14px;">Or Paste External URL</label>
+                    <input type="text" id="notificationSoundUrl" value="${isBase64(notificationSound.url) ? '' : (notificationSound.url || '')}" class="search-bar" style="margin-bottom: 0;" placeholder="https://... or /sounds/...">
+                    ${generateFileDisplay(notificationSound.url, 'notificationSound', 'notificationSoundUrl')}
+                </div>
+            </div>
+
+            <div class="card">
+                <h3><i class="fas fa-sign-in-alt" style="color: var(--primary);"></i> Login Sound</h3>
+                <div style="display: flex; align-items: center; gap: 15px; margin-top: 15px; flex-wrap: wrap;">
+                    <label class="toggle-switch">
+                        <input type="checkbox" id="loginSoundEnabled" ${parseBool(loginSound.enabled) ? 'checked' : ''}>
+                        <span class="slider"></span>
+                    </label>
+                    <span>Enable Login Sound</span>
+                </div>
+                <div style="margin-top: 20px;">
+                    <label style="display: block; margin-bottom: 8px; color: var(--text-dim); font-size: 14px;">📁 Upload Sound File (MP3, WAV, OGG - Max 10MB)</label>
+                    <div style="display: flex; gap: 10px; flex-wrap: wrap; align-items: center;">
+                        <input type="file" id="loginSoundFile" accept="audio/*" style="flex: 1; min-width: 150px; padding: 8px; background: #1e293b; border: 1px solid #334155; border-radius: 8px; color: white; font-size: 13px;">
+                        <button type="button" class="btn-success" onclick="uploadAudioFile('loginSoundFile', 'loginSoundUrl', 'loginSoundUploadBtn', 'loginSound', 'loginSoundStatus')" id="loginSoundUploadBtn" style="padding: 10px 15px; white-space: nowrap;">
+                            <i class="fas fa-upload"></i> Upload
+                        </button>
+                    </div>
+                    <div id="loginSoundStatus" class="upload-status"></div>
+                    <label style="display: block; margin-top: 15px; margin-bottom: 8px; color: var(--text-dim); font-size: 14px;">Or Paste External URL</label>
+                    <input type="text" id="loginSoundUrl" value="${isBase64(loginSound.url) ? '' : (loginSound.url || '')}" class="search-bar" style="margin-bottom: 0;" placeholder="https://... or /sounds/...">
+                    ${generateFileDisplay(loginSound.url, 'loginSound', 'loginSoundUrl')}
+                </div>
+            </div>
+
+            <button type="submit" class="btn-balance" style="width: 100%; padding: 15px; font-size: 16px; margin-top: 10px;">
+                <i class="fas fa-save"></i> Save All Audio Settings
+            </button>
+        </form>
+    `;
+}
+
+async function saveAudioSettingsAdmin(event) {
+    event.preventDefault();
+    
+    const settings = {
+        bgMusicEnabled: document.getElementById('bgMusicEnabled').checked,
+        bgMusicUrl: document.getElementById('bgMusicUrl').value,
+        bgMusicVolume: document.getElementById('bgMusicVolume').value / 100,
+        welcomeVoiceEnabled: document.getElementById('welcomeVoiceEnabled').checked,
+        welcomeVoiceUrl: document.getElementById('welcomeVoiceUrl').value,
+        successSoundEnabled: document.getElementById('successSoundEnabled').checked,
+        successSoundUrl: document.getElementById('successSoundUrl').value,
+        notificationSoundEnabled: document.getElementById('notificationSoundEnabled').checked,
+        notificationSoundUrl: document.getElementById('notificationSoundUrl').value,
+        loginSoundEnabled: document.getElementById('loginSoundEnabled').checked,
+        loginSoundUrl: document.getElementById('loginSoundUrl').value
+    };
+    
+    const btn = event.target.querySelector('button[type="submit"]');
+    btn.innerHTML = '<span class="spinner"></span> Saving...';
+    btn.disabled = true;
+
+    const res = await adminFetch("/admin/audio/settings", "POST", settings);
+    
+    btn.innerHTML = '<i class="fas fa-save"></i> Save All Audio Settings';
+    btn.disabled = false;
+
+    if (res.success) {
+        showAlert('success', 'Audio settings saved successfully!');
+    } else {
+        showAlert('error', 'Failed to save: ' + (res.error || 'Unknown error'));
+    }
+}
+
+/* =========================================
+ * ⚙️ SEO & SOCIAL SHARE SETTINGS
+ * ========================================= */
+async function loadSeoSettingsAdmin() {
+    setActiveNav('nav-seo', 'SEO & Social Share Settings');
+
+    document.getElementById("contentArea").innerHTML = `
+        <div class="card" style="text-align: center; color: var(--text-dim);">
+            <i class="fas fa-spinner fa-spin" style="font-size: 24px; margin-bottom: 10px;"></i>
+            <p>Loading SEO Settings...</p>
+        </div>
+    `;
+
+    const data = await adminFetch("/admin/seo/settings");
+
+    if (data.error) {
+        document.getElementById("contentArea").innerHTML = `<div class="card" style="color:var(--danger)">Failed to load SEO settings: ${data.error}</div>`;
+        return;
+    }
+
+    const settings = data.data || {};
+    const siteTitle = settings.title || "Unasemeje SMM Gains - Kenya's #1 SMM Panel";
+    const siteDesc = settings.description || "Grow TikTok, Instagram, Facebook, YouTube & Telegram instantly.";
+    const siteUrl = settings.url || "https://unasemeje.co.ke";
+    const siteImg = settings.image || "https://unasemeje.co.ke/uploads/social-preview.jpg";
+
+    document.getElementById("contentArea").innerHTML = `
+        <form id="seoSettingsForm" onsubmit="saveSeoSettingsAdmin(event)">
+            <div class="card">
+                <h3><i class="fas fa-share-alt" style="color: var(--primary);"></i> Social Preview Customization</h3>
+                <p style="color: var(--text-dim); font-size: 14px;">Set up link appearance across Facebook, WhatsApp, Telegram, and Twitter.</p>
+
+                <div style="margin-top: 20px;">
+                    <label style="display: block; margin-bottom: 8px; color: var(--text-dim); font-size: 14px;">📷 Preview Image (Recommended 1200x630 - Max 8MB)</label>
+                    <div style="display: flex; gap: 10px; flex-wrap: wrap; align-items: center;">
+                        <input type="file" id="seoImageFile" accept="image/*" style="flex: 1; min-width: 150px; padding: 8px; background: #1e293b; border: 1px solid #334155; border-radius: 8px; color: white; font-size: 13px;">
+                        <button type="button" class="btn-success" onclick="uploadSeoImage()" id="seoUploadBtn" style="padding: 10px 15px; white-space: nowrap;">
+                            <i class="fas fa-upload"></i> Upload Image
+                        </button>
+                    </div>
+                    <div id="seoUploadStatus" class="upload-status"></div>
+
+                    <label style="display: block; margin-top: 15px; margin-bottom: 8px; color: var(--text-dim); font-size: 14px;">Image Destination Link</label>
+                    <input type="text" id="seoImageUrl" value="${siteImg}" class="search-bar" style="margin-bottom: 10px;" oninput="updateLiveSocialPreview()" placeholder="https://unasemeje.co.ke/uploads/social-preview.jpg">
+                </div>
+
+                <div style="margin-top: 15px;">
+                    <label style="display: block; margin-bottom: 8px; color: var(--text-dim); font-size: 14px;">📝 Website Title</label>
+                    <input type="text" id="seoTitle" value="${siteTitle}" class="search-bar" style="margin-bottom: 15px;" oninput="updateLiveSocialPreview()">
+                    
+                    <label style="display: block; margin-bottom: 8px; color: var(--text-dim); font-size: 14px;">📝 Website Description</label>
+                    <textarea id="seoDescription" class="search-bar" style="height: 80px; resize: vertical; margin-bottom: 15px;" oninput="updateLiveSocialPreview()">${siteDesc}</textarea>
+                    
+                    <label style="display: block; margin-bottom: 8px; color: var(--text-dim); font-size: 14px;">🔗 Website URL</label>
+                    <input type="text" id="seoUrl" value="${siteUrl}" class="search-bar" style="margin-bottom: 10px;" oninput="updateLiveSocialPreview()">
+                </div>
+            </div>
+
+            <div class="card">
+                <h3><i class="fas fa-eye" style="color: var(--success);"></i> Live Social Feed Preview</h3>
+                <div class="social-card-preview">
+                    <div class="social-card-img" id="previewSocialImg" style="background-image: url('${siteImg}');"></div>
+                    <div class="social-card-details">
+                        <div class="social-card-domain" id="previewSocialDomain">UNASEMEJE.CO.KE</div>
+                        <div class="social-card-title" id="previewSocialTitle">${siteTitle}</div>
+                        <div class="social-card-desc" id="previewSocialDesc">${siteDesc}</div>
+                    </div>
+                </div>
+            </div>
+
+            <button type="submit" class="btn-balance" style="width: 100%; padding: 15px; font-size: 16px; margin-top: 10px;">
+                <i class="fas fa-save"></i> Save SEO / Social Share Settings
+            </button>
+        </form>
+    `;
+    updateLiveSocialPreview();
+}
+
+async function uploadSeoImage() {
+    const fileInput = document.getElementById('seoImageFile');
+    const urlInput = document.getElementById('seoImageUrl');
+    const btn = document.getElementById('seoUploadBtn');
+    const statusDiv = document.getElementById('seoUploadStatus');
+
+    if (!fileInput.files || !fileInput.files[0]) {
+        showAlert('error', 'Please select a preview image file first!');
+        return;
+    }
+
+    const file = fileInput.files[0];
+    if (file.size > 8 * 1024 * 1024) {
+        showAlert('error', 'Image too large! Maximum limit is 8MB.');
+        return;
+    }
+
+    if (!file.type.startsWith('image/')) {
+        showAlert('error', 'Please upload a valid image file (PNG, JPG, WEBP).');
+        return;
+    }
+
+    btn.innerHTML = '<span class="spinner"></span> Converting...';
+    btn.disabled = true;
+
+    statusDiv.className = 'upload-status show info';
+    statusDiv.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Preparing image payload...';
+
+    try {
+        const base64Data = await new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(reader.result);
+            reader.onerror = reject;
+            reader.readAsDataURL(file);
+        });
+
+        const res = await adminFetch('/admin/seo/upload', 'POST', {
+            imageData: base64Data,
+            fileName: file.name
+        });
+
+        if (res.success) {
+            urlInput.value = res.url;
+            statusDiv.className = 'upload-status show success';
+            statusDiv.innerHTML = `<i class="fas fa-check-circle"></i> Image uploaded successfully!`;
+            showAlert('success', '✅ Preview image uploaded!');
+            fileInput.value = '';
+            updateLiveSocialPreview();
+        } else {
+            statusDiv.className = 'upload-status show error';
+            statusDiv.innerHTML = `<i class="fas fa-exclamation-circle"></i> Upload failed: ${res.error || 'Unknown error'}`;
+            showAlert('error', 'Upload failed: ' + (res.error || 'Unknown error'));
+        }
+    } catch (err) {
+        statusDiv.className = 'upload-status show error';
+        statusDiv.innerHTML = `<i class="fas fa-exclamation-circle"></i> Connection error: ${err.message}`;
+        showAlert('error', 'Connection error: ' + err.message);
+    } finally {
+        btn.innerHTML = '<i class="fas fa-upload"></i> Upload Image';
+        btn.disabled = false;
+    }
+}
+
+function updateLiveSocialPreview() {
+    const titleVal = document.getElementById('seoTitle').value || "Unasemeje SMM Gains";
+    const descVal = document.getElementById('seoDescription').value || "SMM Provider";
+    const urlVal = document.getElementById('seoUrl').value || "https://unasemeje.co.ke";
+    const imgVal = document.getElementById('seoImageUrl').value || "";
+
+    document.getElementById('previewSocialTitle').innerText = titleVal;
+    document.getElementById('previewSocialDesc').innerText = descVal;
+    document.getElementById('previewSocialImg').style.backgroundImage = `url('${imgVal}')`;
+
+    try {
+        const domain = new URL(urlVal).hostname.toUpperCase();
+        document.getElementById('previewSocialDomain').innerText = domain;
+    } catch(e) {
+        document.getElementById('previewSocialDomain').innerText = "UNASEMEJE.CO.KE";
+    }
+}
+
+async function saveSeoSettingsAdmin(event) {
+    event.preventDefault();
+
+    const settings = {
+        title: document.getElementById('seoTitle').value,
+        description: document.getElementById('seoDescription').value,
+        url: document.getElementById('seoUrl').value,
+        image: document.getElementById('seoImageUrl').value
+    };
+
+    const btn = event.target.querySelector('button[type="submit"]');
+    btn.innerHTML = '<span class="spinner"></span> Saving...';
+    btn.disabled = true;
+
+    const res = await adminFetch("/admin/seo/settings", "POST", settings);
+
+    btn.innerHTML = '<i class="fas fa-save"></i> Save SEO / Social Share Settings';
+    btn.disabled = false;
+
+    if (res.success) {
+        showAlert('success', 'SEO settings updated successfully!');
+    } else {
+        showAlert('error', 'Failed saving changes: ' + (res.error || 'Unknown error'));
+    }
+}
+
+/* --- OVERVIEW & DELIX SYNC --- */
+async function loadStats() {
+    setActiveNav('nav-stats', 'Insights & Maintenance');
+    const users = await adminFetch("/admin/users");
+    const deposits = await adminFetch("/admin/deposits");
+    
+    if(!users.error) {
+        const userList = Array.isArray(users) ? users : users.data || [];
+        document.getElementById("stat-users").innerText = userList.length;
+        const total = userList.reduce((s, u) => s + (u.balance || 0), 0);
+        document.getElementById("stat-money").innerText = "KES " + total.toLocaleString();
+    }
+    
+    const depositList = Array.isArray(deposits) ? deposits : deposits.data || [];
+    const pending = depositList.filter(d => d.status === "pending").length;
+    document.getElementById("stat-deposits").innerText = pending;
+
+    document.getElementById("contentArea").innerHTML = `
+        <div class="card">
+            <h3><i class="fas fa-cloud-download-alt"></i> Delix Provider Sync</h3>
+            <p style="color: var(--text-dim)">Fetch the latest services and pricing directly from the Delixgains API.</p>
+            <button class="btn-balance" id="syncBtn" style="padding: 15px 25px;" onclick="syncDelix()"><i class="fas fa-sync"></i> Refresh Delix Services Now</button>
+        </div>
+    `;
+}
+
+async function syncDelix() {
+    if(!confirm("Fetch new services from Delix? This updates your whole store.")) return;
+    const btn = document.getElementById("syncBtn");
+    btn.innerHTML = "<span class='spinner'></span> Syncing...";
+    btn.disabled = true;
+    
+    try {
+        const res = await fetch(`${API}/services?refresh=true`);
+        const data = await res.json();
+        if (data.success) {
+            showAlert('success', 'Store updated from Delix successfully!');
+        } else {
+            showAlert('error', 'Error: ' + (data.error || 'Unknown error'));
+        }
+    } catch(e) { 
+        showAlert('error', 'Sync failed: ' + e.message);
+    } finally {
+        btn.innerHTML = "<i class='fas fa-sync'></i> Refresh Delix Services Now";
+        btn.disabled = false;
+    }
+}
+
+/* --- USER & BALANCE CONTROL --- */
+async function loadUsers() {
+  setActiveNav('nav-users', 'Master User Control');
+  const users = await adminFetch("/admin/users");
+  let html = `<input type="text" class="search-bar" placeholder="Search users..." onkeyup="search()">
+    <div class="table-container"><table id="userTable">
+    <tr><th>Identity</th><th>Balance</th><th>Actions</th></tr>`;
+
+  if(!users.error) {
+      const userList = Array.isArray(users) ? users : users.data || [];
+      userList.forEach(u => {
+        html += `<tr>
+            <td><b>${u.username || 'User'}</b><br><small>${u.email}</small></td>
+            <td><span style="color:var(--primary); font-weight:bold;">KES ${(u.balance || 0).toFixed(2)}</span></td>
+            <td><button class="btn-balance" onclick="editBal('${u._id}', '${u.email}')">Update Balance</button></td>
+          </tr>`;
+      });
+  } else {
+      html += `<tr><td colspan="3" style="text-align:center; color:var(--danger);">Error: ${users.error}</td></tr>`;
+  }
+  document.getElementById("contentArea").innerHTML = html + `</table></div>`;
+}
+
+async function editBal(id, email) {
+    const amt = prompt(`Set absolute balance for ${email}:`);
+    if (amt === null || isNaN(amt)) return;
+    const res = await adminFetch("/admin/update-balance", "POST", { userId: id, amount: parseFloat(amt) });
+    if(res.success) { 
+        showAlert('success', 'Balance updated successfully!');
+        loadUsers(); 
+    } else {
+        showAlert('error', 'Failed: ' + res.error);
+    }
+}
+
+/* --- DEPOSITS & ORDERS --- */
+async function loadDeposits() {
+  setActiveNav('nav-deposits', 'Payment Verification');
+  const deposits = await adminFetch("/admin/deposits");
+  let html = `<div class="table-container"><table><tr><th>User</th><th>Amount</th><th>Code</th><th>Actions</th></tr>`;
+
+  if(!deposits.error) {
+      const depositList = Array.isArray(deposits) ? deposits : deposits.data || [];
+      depositList.filter(d => d.status === "pending").reverse().forEach(d => {
+        html += `<tr>
+            <td>${d.userEmail}</td>
+            <td style="color:var(--success)">KES ${d.amount}</td>
+            <td><code>${d.transactionCode}</code></td>
+            <td>
+              <button class="btn-approve" onclick="actionDep('${d._id}', 'approve')"><i class="fas fa-check"></i></button>
+              <button class="btn-danger" onclick="actionDep('${d._id}', 'cancel')"><i class="fas fa-times"></i></button>
+            </td>
+        </tr>`;
+      });
+  } else {
+      html += `<tr><td colspan="4" style="text-align:center; color:var(--danger);">Error: ${deposits.error}</td></tr>`;
+  }
+  document.getElementById("contentArea").innerHTML = html + `</table></div>`;
+}
+
+async function actionDep(id, type) {
+  if(!confirm("Are you sure?")) return;
+  const endpoint = type === 'approve' ? "/admin/approve-deposit" : "/admin/cancel-deposit";
+  const res = await adminFetch(endpoint, "POST", { depositId: id });
+  if (res.success) {
+      showAlert('success', `Deposit ${type === 'approve' ? 'approved' : 'cancelled'} successfully!`);
+      loadDeposits(); 
+      loadStats();
+  } else {
+      showAlert('error', 'Failed: ' + res.error);
+  }
+}
+
+async function loadOrders() {
+    setActiveNav('nav-orders', 'Live Fulfillment Log');
+    const orders = await adminFetch("/admin/orders");
+    let html = `<div class="table-container"><table><tr><th>Client</th><th>Service</th><th>Link</th><th>Status</th></tr>`;
+    
+    if(!orders.error) {
+        const orderList = Array.isArray(orders) ? orders : orders.data || [];
+        orderList.reverse().slice(0, 50).forEach(o => {
+            html += `<tr><td><small>${o.userEmail}</small></td><td>${o.serviceId}</td><td><a href="${o.link}" target="_blank" style="color:var(--primary)">Open Link</a></td><td>${o.status}</td></tr>`;
+        });
+    } else {
+        html += `<tr><td colspan="4" style="text-align:center; color:var(--danger);">Error: ${orders.error}</td></tr>`;
+    }
+    document.getElementById("contentArea").innerHTML = html + `</table></div>`;
+}
+
+/* =========================================
+ * SUPPORT TICKETS MANAGEMENT
+ * ========================================= */
+async function loadTickets() {
+    setActiveNav('nav-tickets', 'Support Tickets');
+    const tickets = await adminFetch("/admin/tickets");
+    
+    let html = `<div class="table-container"><table><tr><th>User</th><th>Message</th><th>Date</th><th>Status</th><th>Actions</th></tr>`;
+    
+    if (!tickets.error) {
+        const ticketList = Array.isArray(tickets) ? tickets : tickets.data || [];
+        if (ticketList.length === 0) {
+            html += `<tr><td colspan="5" style="text-align:center; color: var(--text-dim); padding: 30px;">No support tickets found.</td></tr>`;
+        } else {
+            ticketList.forEach(t => {
+                const date = new Date(t.createdAt).toLocaleString();
+                const statusColor = t.status === 'Open' ? 'var(--warning)' : 'var(--success)';
+                html += `<tr>
+                    <td><b>${t.username || 'Unknown'}</b><br><small style="color:var(--text-dim)">${t.userEmail}</small></td>
+                    <td style="max-width: 300px; word-wrap: break-word;">${t.message}</td>
+                    <td><small style="color:var(--text-dim)">${date}</small></td>
+                    <td><span style="color: ${statusColor}; font-weight: bold;">${t.status}</span></td>
+                    <td>
+                        ${t.status === 'Open' ? `<button class="btn-success" onclick="resolveTicket('${t._id}')"><i class="fas fa-check"></i> Resolve</button>` : '<small style="color:var(--text-dim)">Closed</small>'}
+                    </td>
+                </tr>`;
+            });
+        }
+    } else {
+        html += `<tr><td colspan="5" style="text-align:center; color:var(--danger);">Error: ${tickets.error}</td></tr>`;
+    }
+    document.getElementById("contentArea").innerHTML = html + `</table></div>`;
+}
+
+async function resolveTicket(id) {
+    if (!confirm("Mark this ticket as resolved?")) return;
+    const res = await adminFetch("/admin/resolve-ticket", "POST", { ticketId: id });
+    if (res.success) {
+        showAlert('success', 'Ticket resolved successfully!');
+        loadTickets();
+    } else {
+        showAlert('error', 'Failed: ' + res.error);
+    }
+}
+
+/* =========================================
+ * TOP TICKER MANAGEMENT
+ * ========================================= */
+let currentTickerItems = [];
+
+async function loadTicker() {
+    setActiveNav('nav-ticker', 'Top Ticker Control');
+    const data = await adminFetch("/ticker");
+    
+    currentTickerItems = data.items || [];
+    const speed = data.speed || 80;
+    
+    let itemsHtml = '';
+    if (currentTickerItems.length === 0) {
+        itemsHtml = `<p style="color: var(--text-dim); text-align: center; padding: 20px;">No ticker messages added yet.</p>`;
+    } else {
+        currentTickerItems.forEach((item, index) => {
+            itemsHtml += `
+                <div class="ticker-item-row" id="ticker-row-${index}" style="display: flex; align-items: center; gap: 10px; padding: 12px; background: #1e293b; border-radius: 8px; margin-bottom: 10px;">
+                    <span id="ticker-text-${index}" style="flex: 1; color: white; word-break: break-word;">${item}</span>
+                    <div style="display: flex; gap: 8px; flex-shrink: 0;">
+                        <button class="btn-balance" onclick="editTickerItemUI(${index})" style="padding: 6px 12px; font-size: 12px;"><i class="fas fa-edit"></i> Edit</button>
+                        <button class="btn-danger" onclick="deleteTickerItem(${index})" style="padding: 6px 12px; font-size: 12px;"><i class="fas fa-trash"></i> Delete</button>
+                    </div>
+                </div>
+            `;
+        });
+    }
+
+    document.getElementById("contentArea").innerHTML = `
+        <div class="card">
+            <h3><i class="fas fa-tachometer-alt"></i> Animation Speed Control</h3>
+            <p style="color: var(--text-dim)">Control how fast text moves across the top (seconds per loop).</p>
+            <div style="display: flex; gap: 15px; align-items: center; margin-top: 15px; flex-wrap: wrap;">
+                <input type="number" id="tickerSpeedInput" value="${speed}" min="10" max="300" style="width: 100px; padding: 10px; background: #1e293b; border: 1px solid #334155; border-radius: 8px; color: white; font-size: 16px;">
+                <button class="btn-balance" id="speedBtn" onclick="updateTickerSpeed()" style="margin-left: auto;"><i class="fas fa-save"></i> Save Speed</button>
+            </div>
+        </div>
+
+        <div class="card">
+            <h3><i class="fas fa-plus-circle"></i> Add New Ticker Message</h3>
+            <div style="display: flex; gap: 15px; margin-top: 15px; flex-wrap: wrap;">
+                <input type="text" id="newTickerItemInput" placeholder="e.g. 🔥 IG Followers KSh 37" style="flex: 1; min-width: 200px; padding: 12px; background: #1e293b; border: 1px solid #334155; border-radius: 8px; color: white;" onkeypress="if(event.key==='Enter')addTickerItem()">
+                <button class="btn-success" id="addTickerBtn" onclick="addTickerItem()" style="padding: 12px 24px;"><i class="fas fa-plus"></i> Add Item</button>
+            </div>
+        </div>
+
+        <div class="card">
+            <h3><i class="fas fa-list"></i> Current Ticker Messages (${currentTickerItems.length})</h3>
+            <div id="tickerItemsList" style="margin-top: 15px;">${itemsHtml}</div>
+        </div>
+    `;
+}
+
+function editTickerItemUI(index) {
+    const currentText = currentTickerItems[index];
+    const row = document.getElementById(`ticker-row-${index}`);
+    row.innerHTML = `
+        <input type="text" id="edit-input-${index}" value="${currentText.replace(/"/g, '&quot;')}" style="flex: 1; padding: 10px; background: #0f172a; border: 1px solid var(--primary); border-radius: 6px; color: white;">
+        <button class="btn-success" onclick="saveTickerItem(${index})" style="padding: 8px 16px;"><i class="fas fa-check"></i> Save</button>
+        <button class="btn-danger" onclick="loadTicker()" style="padding: 8px 16px;"><i class="fas fa-times"></i> Cancel</button>
+    `;
+}
+
+async function saveTickerItem(index) {
+    const input = document.getElementById(`edit-input-${index}`);
+    const newText = input.value.trim();
+    if (!newText) {
+        showAlert('error', 'Text cannot be empty');
+        return;
+    }
+
+    const res = await adminFetch("/admin/ticker/edit", "PUT", { index, text: newText });
+    if (res.success) {
+        showAlert('success', 'Ticker item updated successfully!');
+        loadTicker();
+    } else {
+        showAlert('error', 'Failed to update: ' + res.error);
+    }
+}
+
+async function deleteTickerItem(index) {
+    if (!confirm("Are you sure you want to delete this message?")) return;
+    const res = await adminFetch("/admin/ticker/delete", "DELETE", { index });
+    if (res.success) {
+        showAlert('success', 'Ticker item deleted successfully!');
+        loadTicker();
+    } else {
+        showAlert('error', 'Failed to delete: ' + res.error);
+    }
+}
+
+async function addTickerItem() {
+    const input = document.getElementById('newTickerItemInput');
+    const btn = document.getElementById('addTickerBtn');
+    const text = input.value.trim();
+    
+    if (!text) {
+        showAlert('error', 'Please enter a message');
+        return;
+    }
+
+    btn.innerHTML = '<span class="spinner"></span> Adding...';
+    btn.disabled = true;
+
+    const res = await adminFetch("/admin/ticker/add", "POST", { text });
+
+    if (res.success) {
+        input.value = '';
+        showAlert('success', 'Ticker item added successfully!');
+        loadTicker();
+    } else {
+        showAlert('error', 'Failed to add: ' + res.error);
+        btn.innerHTML = '<i class="fas fa-plus"></i> Add Item';
+        btn.disabled = false;
+    }
+}
+
+async function updateTickerSpeed() {
+    const speed = parseInt(document.getElementById('tickerSpeedInput').value);
+    const btn = document.getElementById('speedBtn');
+    
+    if (isNaN(speed) || speed < 5) {
+        showAlert('error', 'Speed must be a number greater than 5');
+        return;
+    }
+
+    btn.innerHTML = '<span class="spinner"></span> Saving...';
+    btn.disabled = true;
+
+    const res = await adminFetch("/admin/ticker/speed", "PUT", { speed });
+    
+    if (res.success) {
+        showAlert('success', 'Ticker speed updated successfully!');
+    } else {
+        showAlert('error', 'Failed to update speed: ' + res.error);
+    }
+    
+    btn.innerHTML = '<i class="fas fa-save"></i> Save Speed';
+    btn.disabled = false;
+}
+
+/* =========================================
+ * CHAT SECURITY & MODERATION LOGS
+ * ========================================= */
+async function loadChatLogs() {
+    setActiveNav('nav-chatlogs', 'Chat Security & Logs');
+    const data = await adminFetch("/admin/chat-logs");
+    
+    if (data.error) {
+        document.getElementById("contentArea").innerHTML = `<div class="card" style="color:var(--danger)">Failed to load logs: ${data.error}</div>`;
+        return;
+    }
+
+    const logs = data.logs || [];
+    const bannedIds = data.bannedUserIds || [];
+
+    let html = `
+        <div class="card" style="border-left: 5px solid var(--warning); margin-bottom: 20px;">
+            <h3><i class="fas fa-gavel"></i> Chat Moderation Dashboard</h3>
+            <p style="color: var(--text-dim); font-size: 14px;">Monitor all AI conversations in real-time. Restrict user AI access for 3 days if necessary.</p>
+        </div>
+        <div id="chatLogsContainer">
+    `;
+
+    if (logs.length === 0) {
+        html += `<div class="card" style="text-align:center; color:var(--text-dim)">No chat logs yet.</div>`;
+    } else {
+        logs.forEach(log => {
+            const isBanned = bannedIds.includes(log.userId);
+            const date = new Date(log.createdAt).toLocaleString();
+            
+            html += `
+                <div class="card" style="margin-bottom: 15px; border-left: 3px solid ${isBanned ? 'var(--danger)' : 'var(--primary)'};">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; flex-wrap: wrap; gap: 10px;">
+                        <div>
+                            <b style="color: white;">${log.username || 'Unknown'}</b> 
+                            <small style="color: var(--text-dim);">(${log.userEmail})</small>
+                            ${isBanned ? '<span style="background: var(--danger); color: white; padding: 2px 8px; border-radius: 10px; font-size: 11px; margin-left: 10px;">BANNED</span>' : ''}
+                        </div>
+                        <small style="color: var(--text-dim);">${date}</small>
+                    </div>
+                    
+                    <div style="background: #1e293b; padding: 10px; border-radius: 8px; margin-bottom: 8px;">
+                        <small style="color: var(--primary); font-weight: bold;">USER:</small>
+                        <p style="margin: 5px 0 0; color: white; word-break: break-word;">${log.userMessage}</p>
+                    </div>
+                    
+                    <div style="background: rgba(34, 197, 94, 0.1); padding: 10px; border-radius: 8px; margin-bottom: 15px;">
+                        <small style="color: var(--success); font-weight: bold;">AI REPLY:</small>
+                        <p style="margin: 5px 0 0; color: #d1d5db; word-break: break-word; white-space: pre-wrap;">${log.aiReply}</p>
+                    </div>
+
+                    <div style="display: flex; gap: 10px; justify-content: flex-end;">
+                        ${isBanned 
+                            ? `<button class="btn-success" onclick="unbanChat('${log.userId}')"><i class="fas fa-unlock"></i> Unban User</button>` 
+                            : `<button class="btn-danger" onclick="banChat('${log.userId}', '${log.userEmail}')"><i class="fas fa-gavel"></i> Ban for 3 Days</button>`
+                        }
+                    </div>
+                </div>
+            `;
+        });
+    }
+    
+    html += `</div>`;
+    document.getElementById("contentArea").innerHTML = html;
+}
+
+async function banChat(userId, email) {
+    const reason = prompt(`Ban ${email} from AI Chat for 3 days?\nEnter reason (optional):`);
+    if (reason === null) return;
+    
+    const res = await adminFetch("/admin/ban-chat", "POST", { userId, reason: reason || "Terms violation" });
+    if (res.success) {
+        showAlert('success', 'User banned from chat for 3 days.');
+        loadChatLogs();
+    } else {
+        showAlert('error', 'Failed: ' + res.error);
+    }
+}
+
+async function unbanChat(userId) {
+    if(!confirm("Remove chat ban for this user immediately?")) return;
+    const res = await adminFetch("/admin/unban-chat", "POST", { userId });
+    if (res.success) {
+        showAlert('success', 'User unbanned successfully.');
+        loadChatLogs();
+    } else {
+        showAlert('error', 'Failed: ' + res.error);
+    }
+}
+
+/* --- GLOBAL SITE CONTROL --- */
+async function loadSiteControl() {
+    setActiveNav('nav-site', 'Global Site Control');
+    
+    let maintenanceStatus = false;
+    try {
+        const settings = await fetch(`${API}/settings`);
+        const settingsData = await settings.json();
+        maintenanceStatus = settingsData.maintenance === true;
+    } catch(e) {
+        console.log("Could not fetch maintenance status");
+    }
+    
+    document.getElementById("contentArea").innerHTML = `
+        <div class="card">
+            <h3><i class="fas fa-broadcast-tower"></i> Global Announcements</h3>
+            <p style="color: var(--text-dim)">Send a push notification or banner to all active users on the main website.</p>
+            <textarea id="announcementText" class="search-bar" style="height: 100px; resize: vertical;" placeholder="Type your message to all users..."></textarea>
+            <button class="btn-balance" id="announceBtn" style="margin-top: 10px; padding: 12px 20px;" onclick="sendAnnouncement()"><i class="fas fa-paper-plane"></i> Broadcast to All Users</button>
+        </div>
+        
+        <div class="card">
+            <h3><i class="fas fa-tools"></i> System Maintenance</h3>
+            
+            <div class="maintenance-status ${maintenanceStatus ? 'offline' : 'online'}">
+                <div class="status-icon ${maintenanceStatus ? 'offline' : 'online'}">
+                    <i class="fas ${maintenanceStatus ? 'fa-exclamation-triangle' : 'fa-check-circle'}"></i>
+                </div>
+                <div class="status-text">
+                    <h3 style="color: ${maintenanceStatus ? 'var(--danger)' : 'var(--success)'}">
+                        ${maintenanceStatus ? 'MAINTENANCE MODE: ON' : 'MAINTENANCE MODE: OFF'}
+                    </h3>
+                    <p>${maintenanceStatus ? 'Website is currently BLOCKED for all users' : 'Website is ONLINE and accessible to all users'}</p>
+                </div>
+            </div>
+            
+            <div class="maintenance-buttons">
+                <button class="btn-danger" id="maintOnBtn" onclick="turnMaintenanceOn()" ${maintenanceStatus ? 'disabled style="opacity: 0.5; cursor: not-allowed;"' : ''}>
+                    <i class="fas fa-power-off"></i> Turn ON Maintenance
+                </button>
+                <button class="btn-success" id="maintOffBtn" onclick="turnMaintenanceOff()" ${!maintenanceStatus ? 'disabled style="opacity: 0.5; cursor: not-allowed;"' : ''}>
+                    <i class="fas fa-play"></i> Turn OFF Maintenance
+                </button>
+            </div>
+        </div>
+        
+        <div class="card">
+            <h3><i class="fas fa-database"></i> Database Management</h3>
+            <button class="btn-balance" style="padding: 12px 20px; margin-right: 10px;" onclick="clearCache()"><i class="fas fa-broom"></i> Clear System Cache</button>
+            <button class="btn-danger" style="padding: 12px 20px;" onclick="resetSystem()"><i class="fas fa-exclamation-triangle"></i> Reset Failed Transactions</button>
+        </div>
+    `;
+}
+
+async function sendAnnouncement() {
+    const msg = document.getElementById('announcementText').value;
+    const btn = document.getElementById('announceBtn');
+    if(!msg) {
+        showAlert('error', 'Please enter a message.');
+        return;
+    }
+    
+    btn.innerHTML = '<span class="spinner"></span> Sending...';
+    btn.disabled = true;
+    
+    const res = await adminFetch("/admin/announce", "POST", { message: msg });
+    
+    btn.innerHTML = '<i class="fas fa-paper-plane"></i> Broadcast to All Users';
+    btn.disabled = false;
+    
+    if (res.success) {
+        showAlert('success', 'Broadcast sent successfully!');
+    } else {
+        showAlert('error', 'Failed: ' + res.error);
+    }
+}
+
+async function turnMaintenanceOn() {
+    if(!confirm("⚠️ WARNING: This will BLOCK all users from accessing the website. Are you sure?")) return;
+    
+    const btn = document.getElementById('maintOnBtn');
+    btn.innerHTML = '<span class="spinner"></span> Turning ON...';
+    btn.disabled = true;
+    
+    const res = await adminFetch("/admin/maintenance", "POST", { action: "on" });
+    if(res.success) {
+        showAlert('success', 'Maintenance mode turned ON.');
+        loadSiteControl();
+    } else {
+        showAlert('error', 'Failed: ' + res.error);
+        btn.innerHTML = '<i class="fas fa-power-off"></i> Turn ON Maintenance';
+        btn.disabled = false;
+    }
+}
+
+async function turnMaintenanceOff() {
+    if(!confirm("Turn OFF maintenance mode? This will allow users to access the website again.")) return;
+    
+    const btn = document.getElementById('maintOffBtn');
+    btn.innerHTML = '<span class="spinner"></span> Turning OFF...';
+    btn.disabled = true;
+    
+    const res = await adminFetch("/admin/maintenance", "POST", { action: "off" });
+    if(res.success) {
+        showAlert('success', 'Maintenance mode turned OFF.');
+        loadSiteControl();
+    } else {
+        showAlert('error', 'Failed: ' + res.error);
+        btn.innerHTML = '<i class="fas fa-play"></i> Turn OFF Maintenance';
+        btn.disabled = false;
+    }
+}
+
+async function clearCache() {
+    if(!confirm("Clear all system caches?")) return;
+    const res = await adminFetch("/admin/clear-cache", "POST");
+    if (res.success) {
+        showAlert('success', 'Cache cleared.');
+    } else {
+        showAlert('error', 'Failed: ' + res.error);
+    }
+}
+
+async function resetSystem() {
+    if(!confirm("Reset all failed transactions? This cannot be undone.")) return;
+    const res = await adminFetch("/admin/reset-failed", "POST");
+    if (res.success) {
+        showAlert('success', 'Failed transactions reset.');
+    } else {
+        showAlert('error', 'Failed: ' + res.error);
+    }
+}
+
+function search() {
+    let filter = document.querySelector(".search-bar").value.toUpperCase();
+    let tr = document.getElementById("userTable").getElementsByTagName("tr");
+    for (let i = 1; i < tr.length; i++) {
+        tr[i].style.display = tr[i].innerText.toUpperCase().includes(filter) ? "" : "none";
+    }
+}
+
+window.onload = function() {
+    loadStats();
+};
+</script>
 </body>
 </html>
